@@ -1,0 +1,114 @@
+# Production Mode Docker Compose for DevMorph Studio
+# This configuration is optimized for production with security and performance
+
+services:
+  # Production app service with optimized settings
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - APP_ENV=production
+      - NODE_ENV=production
+      - DEBUG=false
+      - LOG_LEVEL=warn
+      - TRUST_PROXY=true
+    volumes:
+      - app_production_data:/app/storage
+    ports:
+      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
+    networks:
+      - devmorph
+    restart: unless-stopped
+    # Add health check for production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-3000}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Production database with backup and monitoring
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-prod}
+      POSTGRES_USER: ${POSTGRES_USER:-prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prod}
+    volumes:
+      - type: volume
+        source: db_prod_data
+        target: /var/lib/postgresql/data
+        volume:
+          nocopy: true
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - devmorph
+    restart: unless-stopped
+    # Security: Only allow connections from internal network
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=2621kB
+      -c min_wal_size=512MB
+      -c max_wal_size=2GB
+
+  # Production Redis
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - devmorph
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+
+  # Production web server with SSL and security
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/ssl
+      - static_prod:/usr/share/nginx/html
+    depends_on:
+      - app
+    networks:
+      - devmorph
+    restart: unless-stopped
+
+  # Optional: Add monitoring service
+  monitoring:
+    image: prom/prometheus
+    ports:
+      - "${MONITORING_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.prod.yml:/etc/prometheus/prometheus.yml
+      - monitoring_data:/prometheus
+    networks:
+      - devmorph
+    restart: unless-stopped
+
+networks:
+  devmorph:
+    driver: bridge
+    internal: false  # External access allowed in production
+
+volumes:
+  db_prod_data:
+  redis_prod_data:
+  app_production_data:
+  static_prod:
+  monitoring_data:

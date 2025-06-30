@@ -1,0 +1,77 @@
+# Testing Mode Docker Compose for DevMorph Studio
+# This configuration is optimized for running automated tests
+
+services:
+  # Test app service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      - APP_ENV=test
+      - NODE_ENV=test
+      - DEBUG=false
+      - LOG_LEVEL=error
+    volumes:
+      - .:/app
+      - test_node_modules:/app/node_modules
+    networks:
+      - devmorph
+    # Run tests and exit
+    command: npm test
+
+  # Test database (fresh instance for each test run)
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-test}
+      POSTGRES_USER: ${POSTGRES_USER:-test}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test}
+    volumes:
+      - db_test_tmp:/var/lib/postgresql/data  # Temporary volume for tests
+    networks:
+      - devmorph
+
+  # Test Redis
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_test_tmp:/data  # Temporary volume for tests
+    networks:
+      - devmorph
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+
+  # Test runner service
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      - APP_ENV=test
+      - NODE_ENV=test
+      - TEST_REPORT_PATH=/test-reports
+    volumes:
+      - .:/app
+      - test_node_modules:/app/node_modules
+      - test_reports:/test-reports
+      - coverage_reports:/coverage
+    depends_on:
+      - app
+      - db
+      - redis
+    networks:
+      - devmorph
+    command: npm run test:coverage
+
+networks:
+  devmorph:
+    driver: bridge
+
+volumes:
+  db_test_tmp:
+  redis_test_tmp:
+  test_node_modules:
+  test_reports:
+  coverage_reports:
