@@ -1,0 +1,100 @@
+services:
+  # Design environment with full graphic tools suite
+  design-suite:
+    image: jlesage/baseimage-gui:ubuntu-20.04-v4
+    ports:
+      - "5800:5800"  # Web-based VNC interface
+      - "5900:5900"  # VNC access
+    environment:
+      - USER_ID=1000
+      - GROUP_ID=1000
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
+      - TZ=Etc/UTC
+      - KEEP_APP_RUNNING=1
+    volumes:
+      - ./:/workspace:rw
+      - design_assets:/assets
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw  # For X11 forwarding (if available)
+  devices:
+    # Optional GPU access for graphics acceleration
+    # - /dev/dri:/dev/dri  # For hardware acceleration
+    stdin_open: true
+    tty: true
+    # Design-specific settings
+    security_opt:
+      - "no-new-privileges:true"
+
+  # Figma-like web design tool (via browser-based solution)
+  design-tools:
+    image: lscr.io/linuxserver/firefox:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
+      - USER_ID=1000
+      - GROUP_ID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - design_tools_data:/config  # Persistent browser data
+      - ./:/workspace:rw
+      - design_assets:/assets
+    depends_on:
+      - design-suite
+    # Web-based design tools access
+
+  # Design asset management
+  design-assets:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"  # S3-compatible API
+      - "9001:9001"  # Web UI
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    volumes:
+      - design_storage:/data
+    command: server /data --console-address ":9001"
+    # Design assets specific settings
+    restart: unless-stopped
+
+  # Design collaboration tool
+  design-collab:
+    image: outline/outline:latest
+    ports:
+      - "3002:3000"
+    environment:
+      - DATABASE_URL=postgresql://design_user:design_pass@design-db:5432/design_db
+      - REDIS_URL=redis://design-cache:6379
+      - SECRET_KEY_BASE=design_secret_key_for_encryption
+      - UTILS_REDIS_URL=redis://design-cache:6379
+      - AWS_S3_UPLOAD_BUCKET_URL=http://design-assets:9000
+      - AWS_S3_FORCE_PATH_STYLE=true
+    depends_on:
+      - design-db
+      - design-cache
+      - design-assets
+    restart: unless-stopped
+
+  # Design database
+  design-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: design_db
+      POSTGRES_USER: design_user
+      POSTGRES_PASSWORD: design_pass
+    volumes:
+      - design_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Design cache
+  design-cache:
+    image: redis:alpine
+    restart: unless-stopped
+
+volumes:
+  design_storage:
+  design_assets:
+  design_db_data:
+  design_tools_data:
