@@ -164,3 +164,73 @@ get_absolute_path() {
         (CDPATH= cd -- "$(dirname -- "$1")" && pwd -P)/$(basename -- "$1")
     fi
 }
+
+# Function to safely copy files with error handling
+# Arguments:
+# $1 - Source path
+# $2 - Destination path
+safe_copy() {
+    src="$1"
+    dst="$2"
+    
+    # Validate source exists
+    if [ ! -e "$src" ]; then
+        echo "Error: Source does not exist: $src" >&2
+        return 1
+    fi
+    
+    # Use safer copy method to prevent path traversal
+    if [ -d "$src" ]; then
+        # Copy directory contents
+        if ! (cd "$src" && tar cf - .) | (cd "$dst" && tar xf -); then
+            echo "Error: Failed to copy directory from '$src' to '$dst'" >&2
+            return 1
+        fi
+    else
+        # Copy file
+        if ! cp "$src" "$dst"; then
+            echo "Error: Failed to copy file from '$src' to '$dst'" >&2
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
+# Function to validate workspace path to prevent directory traversal
+# Arguments:
+# $1 - Path to validate
+validate_workspace_path() {
+    path="$1"
+    
+    # Check for dangerous patterns that could lead to directory traversal
+    case "$path" in
+        */..|*../|*../*|/*|../*|*//*)
+            echo "Error: Path contains dangerous traversal patterns" >&2
+            return 1
+            ;;
+    esac
+    
+    # Resolve the path and make sure it's under the current directory
+    abs_path=$(get_absolute_path "$path")
+    current_dir=$(get_absolute_path ".")
+    
+    case "$abs_path" in
+        "$current_dir"/*|"$current_dir")
+            # Path is within current directory, which is safe
+            return 0
+            ;;
+        *)
+            # Path is outside current directory, which is dangerous
+            echo "Error: Path '$path' resolves outside current directory" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Function to escape special characters in strings for use with sed
+# Arguments:
+# $1 - String to escape
+escape_for_sed() {
+    echo "$1" | sed 's/[[\.*^$()+?{|]/\\&/g'
+}

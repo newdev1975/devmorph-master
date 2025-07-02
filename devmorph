@@ -5,8 +5,32 @@
 # Exit on error
 set -e
 
-# Get the script directory
+# Source libraries with error handling
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+LIB_DIR="$SCRIPT_DIR/workspace-manager/lib"
+
+# Only source if files exist
+if [ -f "$LIB_DIR/helpers.sh" ]; then
+    . "$LIB_DIR/helpers.sh"
+else
+    # Define basic helper functions if helpers.sh is not available
+    command_exists() {
+        command -v "$1" >/dev/null 2>&1
+    }
+fi
+
+if [ -f "$LIB_DIR/logger.sh" ]; then
+    . "$LIB_DIR/logger.sh"
+    # Initialize logging if logger is available
+    if command_exists initialize_logger 2>/dev/null; then
+        initialize_logger
+    fi
+else
+    # Define basic logging functions if logger is not available
+    log_info() { echo "INFO [$(basename "$0")] $1" >&2; }
+    log_error() { echo "ERROR [$(basename "$0")] $1" >&2; }
+    log_warn() { echo "WARN [$(basename "$0")] $1" >&2; }
+fi
 
 # Default values
 COMMAND=""
@@ -14,13 +38,14 @@ SUBCOMMAND=""
 
 # Function to display usage
 usage() {
+    log_info "Displaying usage information"
     echo "Usage: $0 (workspace) [subcommand] [options]"
     echo ""
     echo "Available modules:"
     echo "  workspace    Manage workspaces"
     echo ""
     echo "Use '$0 <module> --help' for more information about a module."
-    exit 1
+    exit 0
 }
 
 # Check if command is provided
@@ -31,10 +56,11 @@ fi
 COMMAND="$1"
 shift
 
-# Route to appropriate module
+# Validate command parameter
 case "$COMMAND" in
     "workspace")
         if [ $# -eq 0 ]; then
+            log_info "Displaying workspace usage information"
             echo "Usage: $0 workspace (create|start|stop|list|destroy|mode) [options]"
             echo ""
             echo "Available workspace commands:"
@@ -46,33 +72,32 @@ case "$COMMAND" in
             echo "  mode          Manage workspace mode (set/show)"
             echo ""
             echo "Use '$0 workspace <command> --help' for more information about a command."
-            exit 1
+            exit 0
         fi
         
         SUBCOMMAND="$1"
         shift
         
+        # Validate subcommand
         case "$SUBCOMMAND" in
-            "create")
-                exec "$SCRIPT_DIR/workspace-create.sh" "$@"
-                ;;
-            "start")
-                exec "$SCRIPT_DIR/workspace-start.sh" "$@"
-                ;;
-            "stop")
-                exec "$SCRIPT_DIR/workspace-stop.sh" "$@"
-                ;;
-            "list")
-                exec "$SCRIPT_DIR/workspace-list.sh" "$@"
-                ;;
-            "destroy")
-                exec "$SCRIPT_DIR/workspace-destroy.sh" "$@"
-                ;;
-            "mode")
-                exec "$SCRIPT_DIR/workspace-mode.sh" "$@"
+            "create"|"start"|"stop"|"list"|"destroy"|"mode")
+                log_info "Executing workspace $SUBCOMMAND command"
+                
+                # Validate that the target script exists
+                target_script="$SCRIPT_DIR/workspace-$SUBCOMMAND.sh"
+                if [ ! -f "$target_script" ]; then
+                    log_error "Workspace command script does not exist: $target_script"
+                    exit 1
+                fi
+                
+                # Execute the target script with proper error handling
+                if ! "$target_script" "$@"; then
+                    log_error "Workspace command $SUBCOMMAND failed"
+                    exit 1
+                fi
                 ;;
             *)
-                echo "Error: Unknown workspace command '$SUBCOMMAND'" >&2
+                log_error "Unknown workspace command '$SUBCOMMAND'. Available: create, start, stop, list, destroy, mode"
                 echo "Use '$0 workspace --help' to see available commands." >&2
                 exit 1
                 ;;
@@ -82,7 +107,7 @@ case "$COMMAND" in
         usage
         ;;
     *)
-        echo "Error: Unknown command '$COMMAND'" >&2
+        log_error "Unknown command '$COMMAND'. Available: workspace"
         echo "Use '$0 --help' to see available commands." >&2
         exit 1
         ;;
