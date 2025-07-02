@@ -1,0 +1,55 @@
+services:
+  # Production services configuration
+  prod-server:
+    image: node:18-alpine
+    volumes:
+      - prod_node_modules:/app/node_modules
+    working_dir: /app
+    ports:
+      - "80:3000"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    command: sh -c "npm install --production && npm start"
+    # Production-specific security settings
+    user: "node"  # Run as non-root user
+    security_opt:
+      - "no-new-privileges:true"
+    # Disable stdin and tty for production
+    stdin_open: false
+    tty: false
+    # Production-specific resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # Production database
+  prod-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: prod_db
+      POSTGRES_USER: prod_user
+      POSTGRES_PASSWORD: "${PROD_DB_PASSWORD}"  # Use environment variable
+    ports:
+      - "5432:5432"
+    volumes:
+      - prod_db_data:/var/lib/postgresql/data
+      - ./init-prod.sql:/docker-entrypoint-initdb.d/init-prod.sql
+    # Production security settings
+    command: ["postgres", "-c", "log_statement=none", "-c", "log_min_duration_statement=1000"]
+    restart: unless-stopped
+
+  # Production cache
+  prod-cache:
+    image: redis:alpine
+    command: redis-server --loglevel notice --requirepass "${REDIS_PASSWORD}"
+    restart: unless-stopped
+
+volumes:
+  prod_db_data:
+  prod_node_modules:

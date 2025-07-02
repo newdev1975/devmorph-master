@@ -1,0 +1,46 @@
+services:
+  # Development services configuration
+  dev-server:
+    image: node:18-alpine
+    volumes:
+      - ./:/app
+      - dev_node_modules:/app/node_modules  # Docker volume for node_modules to avoid host conflicts
+    working_dir: /app
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Node.js debugger
+    environment:
+      - NODE_ENV=development
+      - DEBUG=*  # Enable debug mode
+    command: sh -c "npm install && npm run dev"
+    stdin_open: true
+    tty: true
+    # Development-specific settings
+    security_opt:
+      - "no-new-privileges:true"
+
+  # Development database
+  dev-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: dev_db
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev_db_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # For initialization scripts
+    # Development specific settings
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_min_duration_statement=0"]
+
+  # Development cache
+  dev-cache:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --loglevel verbose
+
+volumes:
+  dev_db_data:
+  dev_node_modules:
