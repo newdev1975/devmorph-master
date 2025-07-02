@@ -1,0 +1,89 @@
+#!/bin/sh
+# Main DevMorph CLI Script
+# Routes commands to appropriate modules
+
+# Exit on error
+set -e
+
+# Get the script directory
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+
+# Default values
+COMMAND=""
+SUBCOMMAND=""
+
+# Function to display usage
+usage() {
+    echo "Usage: $0 (workspace) [subcommand] [options]"
+    echo ""
+    echo "Available modules:"
+    echo "  workspace    Manage workspaces"
+    echo ""
+    echo "Use '$0 <module> --help' for more information about a module."
+    exit 1
+}
+
+# Check if command is provided
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+COMMAND="$1"
+shift
+
+# Route to appropriate module
+case "$COMMAND" in
+    "workspace")
+        if [ $# -eq 0 ]; then
+            echo "Usage: $0 workspace (create|start|stop|list|destroy|mode) [options]"
+            echo ""
+            echo "Available workspace commands:"
+            echo "  create        Create a new workspace"
+            echo "  start         Start a workspace"
+            echo "  stop          Stop a workspace"
+            echo "  list          List all workspaces"
+            echo "  destroy       Destroy a workspace"
+            echo "  mode          Manage workspace mode (set/show)"
+            echo ""
+            echo "Use '$0 workspace <command> --help' for more information about a command."
+            exit 1
+        fi
+        
+        SUBCOMMAND="$1"
+        shift
+        
+        case "$SUBCOMMAND" in
+            "create")
+                exec "$SCRIPT_DIR/workspace-create.sh" "$@"
+                ;;
+            "start")
+                exec "$SCRIPT_DIR/workspace-start.sh" "$@"
+                ;;
+            "stop")
+                exec "$SCRIPT_DIR/workspace-stop.sh" "$@"
+                ;;
+            "list")
+                exec "$SCRIPT_DIR/workspace-list.sh" "$@"
+                ;;
+            "destroy")
+                exec "$SCRIPT_DIR/workspace-destroy.sh" "$@"
+                ;;
+            "mode")
+                exec "$SCRIPT_DIR/workspace-mode.sh" "$@"
+                ;;
+            *)
+                echo "Error: Unknown workspace command '$SUBCOMMAND'" >&2
+                echo "Use '$0 workspace --help' to see available commands." >&2
+                exit 1
+                ;;
+        esac
+        ;;
+    "--help"|"-h")
+        usage
+        ;;
+    *)
+        echo "Error: Unknown command '$COMMAND'" >&2
+        echo "Use '$0 --help' to see available commands." >&2
+        exit 1
+        ;;
+esac
