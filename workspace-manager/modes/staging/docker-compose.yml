@@ -1,0 +1,55 @@
+services:
+  # Staging services configuration
+  staging-server:
+    image: node:18-alpine
+    volumes:
+      - staging_node_modules:/app/node_modules
+    working_dir: /app
+    ports:
+      - "80:3000"
+    environment:
+      - NODE_ENV=staging
+      - LOG_LEVEL=warn
+      - STAGE=staging
+    command: sh -c "npm install --production && npm run stage"
+    # Staging-specific settings (similar to production but with more logging)
+    user: "node"
+    security_opt:
+      - "no-new-privileges:true"
+    stdin_open: false
+    tty: false
+    # Resource limits between dev and prod
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Staging database
+  staging-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: staging_db
+      POSTGRES_USER: staging_user
+      POSTGRES_PASSWORD: "${STAGING_DB_PASSWORD}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - staging_db_data:/var/lib/postgresql/data
+      - ./init-staging.sql:/docker-entrypoint-initdb.d/init-staging.sql
+    # Staging settings
+    command: ["postgres", "-c", "log_statement=ddl", "-c", "log_min_duration_statement=500"]
+    restart: unless-stopped
+
+  # Staging cache
+  staging-cache:
+    image: redis:alpine
+    command: redis-server --loglevel notice
+    restart: unless-stopped
+
+volumes:
+  staging_db_data:
+  staging_node_modules:
