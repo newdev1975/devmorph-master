@@ -1,0 +1,109 @@
+services:
+  # Mixed mode services - combining development and design tools
+  mix-dev-server:
+    image: node:18-alpine
+    volumes:
+      - ./:/app
+      - mix_node_modules:/app/node_modules
+    working_dir: /app
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Node.js debugger
+    environment:
+      - NODE_ENV=development
+      - DEBUG=*  # Enable debug mode
+      - DESIGN_MODE=true  # Indicate design features are enabled
+    command: sh -c "npm install && npm run dev"
+    stdin_open: true
+    tty: true
+    # Mixed mode specific settings
+    security_opt:
+      - "no-new-privileges:true"
+
+  # Mixed mode design tool with full graphic capabilities
+  mix-design-suite:
+    image: jlesage/baseimage-gui:ubuntu-20.04-v4
+    ports:
+      - "5800:5800"  # Web-based VNC interface
+      - "5900:5900"  # VNC access
+    environment:
+      - USER_ID=1000
+      - GROUP_ID=1000
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
+      - TZ=Etc/UTC
+      - KEEP_APP_RUNNING=1
+    volumes:
+      - ./:/workspace:rw
+      - mix_design_assets:/drawio/assets
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw  # For X11 forwarding (if available)
+  devices:
+    # Optional GPU access for graphics acceleration
+    # - /dev/dri:/dev/dri  # For hardware acceleration
+    stdin_open: true
+    tty: true
+    # Mixed mode design tool, no GUI dependencies
+    restart: unless-stopped
+
+  # Figma-like web design tool
+  mix-web-design:
+    image: lscr.io/linuxserver/firefox:latest
+    ports:
+      - "8080:3000"
+    environment:
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
+      - USER_ID=1000
+      - GROUP_ID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - mix_web_config:/config  # Persistent browser data
+      - ./:/workspace:rw
+      - mix_design_assets:/assets
+    depends_on:
+      - mix-design-suite
+    restart: unless-stopped
+
+  # Mixed mode database for both dev and design
+  mix-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: mix_db
+      POSTGRES_USER: mix_user
+      POSTGRES_PASSWORD: mix_password
+    ports:
+      - "5432:5432"  # Make DB accessible for dev work
+    volumes:
+      - mix_db_data:/var/lib/postgresql/data
+      - ./init-mix.sql:/docker-entrypoint-initdb.d/init-mix.sql
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_min_duration_statement=0"]
+    restart: unless-stopped
+
+  # Mixed mode cache
+  mix-cache:
+    image: redis:alpine
+    ports:
+      - "6379:6379"  # Make cache accessible for dev work
+    command: redis-server --loglevel verbose
+    restart: unless-stopped
+
+  # Mixed mode asset management
+  mix-assets:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"  # S3-compatible API
+      - "9001:9001"  # Web UI
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    volumes:
+      - mix_storage:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+volumes:
+  mix_db_data:
+  mix_node_modules:
+  mix_design_assets:
+  mix_storage:
+  mix_web_config:
