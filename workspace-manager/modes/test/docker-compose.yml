@@ -1,0 +1,44 @@
+services:
+  # Test services configuration
+  test-runner:
+    image: node:18-alpine
+    volumes:
+      - ./:/app
+      - test_node_modules:/app/node_modules
+    working_dir: /app
+    environment:
+      - NODE_ENV=test
+      - LOG_LEVEL=error
+      - TEST_SUITE=all
+    command: sh -c "npm install && npm test"
+    # Test-specific settings
+    security_opt:
+      - "no-new-privileges:true"
+    stdin_open: false
+    tty: false
+    # Run to completion then exit
+    restart: "no"
+
+  # Test database (ephemeral, recreated for each test run)
+  test-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+      - ./init-test.sql:/docker-entrypoint-initdb.d/init-test.sql
+    # Test-specific settings: faster but less durable
+    command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"]
+    restart: "no"  # Don't restart after tests complete
+
+  # Test cache
+  test-cache:
+    image: redis:alpine
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    restart: "no"
+
+volumes:
+  test_db_data:
+  test_node_modules:
