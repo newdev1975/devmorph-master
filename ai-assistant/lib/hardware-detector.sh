@@ -211,7 +211,7 @@ run_hardware_detection() {
     echo "================================"
 }
 
-# If script is run directly, execute the detection
-if [ "$0" = "$BASH_SOURCE" ] || [ -z "$BASH_VERSION" ]; then
+# Only run hardware detection if script is run directly and not in test environment
+if [ -z "$BATS_TEST_DIRNAME" ] && { [ "$0" = "$BASH_SOURCE" ] || [ -z "$BASH_VERSION" ]; }; then
     run_hardware_detection
 fi

@@ -5,8 +5,33 @@
 set -e
 
 # Source hardware detection library
-SCRIPT_DIR="$(dirname "$0")"
-. "$SCRIPT_DIR/hardware-detector.sh"
+# Find hardware-detector.sh in the same directory as this script
+# Use the BASH_SOURCE variable when available, otherwise fall back to $0
+if [ -n "$BASH_VERSION" ] && [ -n "${BASH_SOURCE[0]}" ]; then
+    # Bash environment - use BASH_SOURCE for accurate script location
+    SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+else
+    # POSIX sh environment - use $0 but handle it carefully
+    SCRIPT_DIR="$(dirname "$0")"
+fi
+
+# Normalize the directory path to get the absolute path
+if [ -d "$SCRIPT_DIR" ]; then
+    MODEL_SELECTOR_DIR=$(cd "$SCRIPT_DIR" && pwd)
+else
+    # Fallback if the directory doesn't exist
+    echo "Error: Cannot determine script directory" >&2
+    return 1
+fi
+
+HARDWARE_DETECTOR_PATH="$MODEL_SELECTOR_DIR/hardware-detector.sh"
+
+if [ -f "$HARDWARE_DETECTOR_PATH" ]; then
+    . "$HARDWARE_DETECTOR_PATH"
+else
+    echo "Error: hardware-detector.sh not found at $HARDWARE_DETECTOR_PATH" >&2
+    return 1
+fi
 
 # Default model selection strategy
 SELECTED_MODEL_TYPE="cloud"  # Default to cloud models
@@ -220,5 +245,8 @@ display_model_selection() {
     fi
 }
 
-# Select the best model automatically when the script is sourced
-select_best_model
+# Only run automatic model selection if not in test environment
+if [ -z "$BATS_TEST_DIRNAME" ]; then
+    # Select the best model automatically when the script is sourced in non-test environments
+    select_best_model
+fi
