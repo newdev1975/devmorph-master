@@ -1,0 +1,57 @@
+services:
+  llama-cpp-server:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: llama-cpp-server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${MODEL_PATH:-./models}:/models
+    environment:
+      - MODEL=/models/model.gguf
+      - N_CTX=2048
+      - N_GPU=${N_GPU:-0}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["--port", "8080", "--model", "/models/model.gguf", "--ctx-size", "2048"]
+    restart: unless-stopped
+
+  sd-webui:
+    image: ghcr.io/ashleykza/stable-diffusion-webui:latest
+    container_name: sd-webui
+    ports:
+      - "7860:7860"
+    volumes:
+      - ${SD_MODELS_PATH:-./sd-models}:/stable-diffusion-webui/models
+      - ${SD_OUTPUT_PATH:-./ai-assistant/sd-output}:/stable-diffusion-webui/outputs
+    environment:
+      - COMMANDLINE_ARGS=--medvram --xformers
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  whisper-server:
+    image: curlpipe/whisper.cpp:latest
+    container_name: whisper-server
+    ports:
+      - "9000:9000"
+    volumes:
+      - ${WHISPER_MODELS_PATH:-./whisper-models}:/models
+    environment:
+      - MODEL=/models/ggml-base.en.bin
+    command: ["--server", "--port", "9000", "--model", "/models/ggml-base.en.bin"]
+    restart: unless-stopped
+
+networks:
+  default:
+    name: ai-assistant-network
+    driver: bridge
