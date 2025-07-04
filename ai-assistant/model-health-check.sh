@@ -333,6 +333,4 @@ check_model_health_for_type() {
 }
 
 # If script is executed directly, run based on command line arguments
-if [ "$0" = "$BASH_SOURCE" ] || [ -z "$BASH_VERSION" ]; then
-    manage_models "$@"
-fi
+manage_models "$@"

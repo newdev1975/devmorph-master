@@ -342,39 +342,37 @@ run_local_ai() {
 }
 
 # If script is executed directly, run based on command line arguments
-if [ "$0" = "$BASH_SOURCE" ] || [ -z "$BASH_VERSION" ]; then
-    case "${1:-status}" in
-        "prepare")
-            prepare_local_models "${2:-llama}" "${3:-base}"
-            ;;
-        "start")
-            start_local_models
-            ;;
-        "stop")
-            stop_local_models
-            ;;
-        "status")
-            check_model_status
-            ;;
-        "run")
-            run_local_ai "${2:-text}" "${3:-Hello, world!}"
-            ;;
-        "download")
-            prepare_local_models "${2}" "${3:-base}"
-            ;;
-        *)
-            echo "Usage: $0 {prepare|start|stop|status|run|download} [model_type] [size/prompt]"
-            echo "  prepare <model> <size> - Download and prepare local models"
-            echo "  start                 - Start local model services"  
-            echo "  stop                  - Stop local model services"
-            echo "  status                - Check status of model services"
-            echo "  run <task> <input>    - Run a local AI task"
-            echo "  download <model> <size> - Just download models"
-            echo ""
-            echo "Model types: llama, stable-diffusion, whisper"
-            echo "Sizes: tiny, base, small, large"
-            echo "Tasks: code, text, image, audio, transcribe"
-            exit 1
-            ;;
-    esac
-fi
+case "${1:-status}" in
+    "prepare")
+        prepare_local_models "${2:-llama}" "${3:-base}"
+        ;;
+    "start")
+        start_local_models
+        ;;
+    "stop")
+        stop_local_models
+        ;;
+    "status")
+        check_model_status
+        ;;
+    "run")
+        run_local_ai "${2:-text}" "${3:-Hello, world!}"
+        ;;
+    "download")
+        prepare_local_models "${2}" "${3:-base}"
+        ;;
+    *)
+        echo "Usage: $0 {prepare|start|stop|status|run|download} [model_type] [size/prompt]"
+        echo "  prepare <model> <size> - Download and prepare local models"
+        echo "  start                 - Start local model services"  
+        echo "  stop                  - Stop local model services"
+        echo "  status                - Check status of model services"
+        echo "  run <task> <input>    - Run a local AI task"
+        echo "  download <model> <size> - Just download models"
+        echo ""
+        echo "Model types: llama, stable-diffusion, whisper"
+        echo "Sizes: tiny, base, small, large"
+        echo "Tasks: code, text, image, audio, transcribe"
+        exit 1
+        ;;
+esac

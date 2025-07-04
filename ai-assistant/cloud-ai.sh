@@ -326,6 +326,4 @@ run_cloud_operation() {
 }
 
 # If script is executed directly, run based on command line arguments
-if [ "$0" = "$BASH_SOURCE" ] || [ -z "$BASH_VERSION" ]; then
-    run_cloud_operation "$@"
-fi
+run_cloud_operation "$@"
