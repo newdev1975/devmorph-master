@@ -9,59 +9,59 @@ di_utils_load_all_components() {
     # This function will source all the DI container components
     # It helps to make sure all functions are available in the current shell context
     
-    script_dir=$(dirname "$0")
+    script_dir=$(dirname "$(dirname "$0")")  # Go up two levels from utils/
     
     # Source the main container implementation
-    if [ -f "$script_dir/../Container.impl" ]; then
-        . "$script_dir/../Container.impl" || return 1
+    if [ -f "$script_dir/Container.impl" ]; then
+        . "$script_dir/Container.impl" || return 1
     else
         echo "ERROR: Container.impl not found" >&2
         return 1
     fi
     
     # Source the service registry implementation
-    if [ -f "$script_dir/../ServiceRegistry.impl" ]; then
-        . "$script_dir/../ServiceRegistry.impl" || return 1
+    if [ -f "$script_dir/ServiceRegistry.impl" ]; then
+        . "$script_dir/ServiceRegistry.impl" || return 1
     else
         echo "ERROR: ServiceRegistry.impl not found" >&2
         return 1
     fi
     
     # Source the service resolver implementation
-    if [ -f "$script_dir/../ServiceResolver.impl" ]; then
-        . "$script_dir/../ServiceResolver.impl" || return 1
+    if [ -f "$script_dir/ServiceResolver.impl" ]; then
+        . "$script_dir/ServiceResolver.impl" || return 1
     else
         echo "ERROR: ServiceResolver.impl not found" >&2
         return 1
     fi
     
     # Source the lifetime manager implementation
-    if [ -f "$script_dir/../LifetimeManager.impl" ]; then
-        . "$script_dir/../LifetimeManager.impl" || return 1
+    if [ -f "$script_dir/LifetimeManager.impl" ]; then
+        . "$script_dir/LifetimeManager.impl" || return 1
     else
         echo "ERROR: LifetimeManager.impl not found" >&2
         return 1
     fi
     
     # Source the circular dependency detector implementation
-    if [ -f "$script_dir/../CircularDependencyDetector.impl" ]; then
-        . "$script_dir/../CircularDependencyDetector.impl" || return 1
+    if [ -f "$script_dir/CircularDependencyDetector.impl" ]; then
+        . "$script_dir/CircularDependencyDetector.impl" || return 1
     else
         echo "ERROR: CircularDependencyDetector.impl not found" >&2
         return 1
     fi
     
     # Source the exception handling implementation
-    if [ -f "$script_dir/../exceptions/ExceptionHandling.impl" ]; then
-        . "$script_dir/../exceptions/ExceptionHandling.impl" || return 1
+    if [ -f "$script_dir/exceptions/ExceptionHandling.impl" ]; then
+        . "$script_dir/exceptions/ExceptionHandling.impl" || return 1
     else
         echo "ERROR: ExceptionHandling.impl not found" >&2
         return 1
     fi
     
     # Source the factory implementation
-    if [ -f "$script_dir/../factories/ServiceFactory.impl" ]; then
-        . "$script_dir/../factories/ServiceFactory.impl" || return 1
+    if [ -f "$script_dir/factories/ServiceFactory.impl" ]; then
+        . "$script_dir/factories/ServiceFactory.impl" || return 1
     else
         echo "ERROR: ServiceFactory.impl not found" >&2
         return 1

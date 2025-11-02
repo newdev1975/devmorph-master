@@ -8,7 +8,9 @@
 # Returns: 0 on success, 1 on failure
 container_init() {
     # Load shell utilities for cross-platform operations
-    if [ -f "$(dirname "$0")/../adapters/shell/shell_utils.sh" ]; then
+    if [ -f "$(dirname "$(dirname "$0")")/adapters/shell/shell_utils.sh" ]; then
+        . "$(dirname "$(dirname "$0")")/adapters/shell/shell_utils.sh"
+    elif [ -f "$(dirname "$0")/../adapters/shell/shell_utils.sh" ]; then
         . "$(dirname "$0")/../adapters/shell/shell_utils.sh"
     elif [ -f "./shell_utils.sh" ]; then
         . "./shell_utils.sh"
