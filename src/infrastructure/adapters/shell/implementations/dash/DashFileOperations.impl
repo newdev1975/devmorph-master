@@ -1,0 +1,174 @@
+#!/bin/sh
+# Implementation: DashFileOperations
+# Description: Dash-specific file operations implementation
+
+# Description: Create a directory (Dash-specific if needed)
+# Parameters:
+#   $1 - Directory path to create
+# Returns:
+#   0 - Directory created successfully
+#   1 - Directory creation failed
+dash_mkdir() {
+    if [ -z "$1" ]; then
+        echo "ERROR: dash_mkdir: No directory path provided" >&2
+        return 1
+    fi
+
+    if mkdir -p "$1" 2>/dev/null; then
+        return 0
+    else
+        echo "ERROR: dash_mkdir: Failed to create directory: $1" >&2
+        return 1
+    fi
+}
+
+# Description: Remove a file or directory (Dash-specific if needed)
+# Parameters:
+#   $1 - Path to remove
+# Returns:
+#   0 - Removal successful
+#   1 - Removal failed
+dash_rm() {
+    if [ -z "$1" ]; then
+        echo "ERROR: dash_rm: No path provided" >&2
+        return 1
+    fi
+
+    if [ -d "$1" ] && [ ! -L "$1" ]; then
+        # It's a directory, remove recursively
+        if rm -rf "$1" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: dash_rm: Failed to remove directory: $1" >&2
+            return 1
+        fi
+    else
+        # It's a file or symlink
+        if rm -f "$1" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: dash_rm: Failed to remove file: $1" >&2
+            return 1
+        fi
+    fi
+}
+
+# Description: Copy a file or directory (Dash-specific if needed)
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Copy successful
+#   1 - Copy failed
+dash_cp() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: dash_cp: Source and destination paths required" >&2
+        return 1
+    fi
+
+    if [ ! -e "$1" ]; then
+        echo "ERROR: dash_cp: Source does not exist: $1" >&2
+        return 1
+    fi
+
+    if [ -d "$1" ]; then
+        # Copy directory
+        if cp -r "$1" "$2" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: dash_cp: Failed to copy directory from $1 to $2" >&2
+            return 1
+        fi
+    else
+        # Copy file
+        if cp "$1" "$2" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: dash_cp: Failed to copy file from $1 to $2" >&2
+            return 1
+        fi
+    fi
+}
+
+# Description: Move a file or directory (Dash-specific if needed)
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Move successful
+#   1 - Move failed
+dash_mv() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: dash_mv: Source and destination paths required" >&2
+        return 1
+    fi
+
+    if [ ! -e "$1" ]; then
+        echo "ERROR: dash_mv: Source does not exist: $1" >&2
+        return 1
+    fi
+
+    if mv "$1" "$2" 2>/dev/null; then
+        return 0
+    else
+        echo "ERROR: dash_mv: Failed to move from $1 to $2" >&2
+        return 1
+    fi
+}
+
+# Description: Check if a path exists
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path exists
+#   1 - Path does not exist
+dash_exists() {
+    if [ -z "$1" ]; then
+        echo "ERROR: dash_exists: No path provided" >&2
+        return 1
+    fi
+
+    if [ -e "$1" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if a path is a directory
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path is a directory
+#   1 - Path is not a directory
+dash_is_directory() {
+    if [ -z "$1" ]; then
+        echo "ERROR: dash_is_directory: No path provided" >&2
+        return 1
+    fi
+
+    if [ -d "$1" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if a path is a file
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path is a file
+#   1 - Path is not a file
+dash_is_file() {
+    if [ -z "$1" ]; then
+        echo "ERROR: dash_is_file: No path provided" >&2
+        return 1
+    fi
+
+    if [ -f "$1" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
