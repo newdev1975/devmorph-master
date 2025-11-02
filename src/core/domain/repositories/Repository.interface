@@ -1,0 +1,14 @@
+// Base Repository interface concept
+interface Repository {
+    // Save an entity to the repository
+    save(entity) -> void
+    
+    // Delete an entity by its ID
+    delete(id) -> void
+    
+    // Find an entity by its ID
+    findById(id) -> Entity or null
+    
+    // Find all entities
+    findAll() -> array<Entity>
+}
