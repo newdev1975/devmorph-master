@@ -1,0 +1,11 @@
+// Domain Entity interface concept
+interface Entity {
+    // Get the unique identifier of the entity
+    getId() -> Id
+    
+    // Check if this entity is the same as another (by identity)
+    equals(other) -> boolean
+    
+    // Validate the entity state
+    validate() -> ValidationResult
+}
