@@ -2,16 +2,6 @@
 # Implementation: POSIXStringOperations
 # Description: POSIX-compliant string operations implementation
 
-# Import shell utilities
-if [ -f "$(dirname "$0")/../../shell_utils.sh" ]; then
-    . "$(dirname "$0")/../../shell_utils.sh"
-elif [ -f "./shell_utils.sh" ]; then
-    . "./shell_utils.sh"
-else
-    echo "ERROR: shell_utils.sh not found" >&2
-    exit 1
-fi
-
 # Description: Trim leading and trailing whitespace from a string
 # Parameters:
 #   $1 - String to trim
@@ -66,10 +56,16 @@ posix_contains() {
 # Output:
 #   String with replacements made
 posix_replace() {
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        log_error "posix_replace: Original string and search substring required"
-        echo "$1"
+    if [ -z "$1" ]; then
+        log_error "posix_replace: Original string required"
+        echo ""
         return 1
+    fi
+
+    if [ -z "$2" ]; then
+        # If search string is empty, return original string unchanged
+        echo "$1"
+        return 0
     fi
 
     # Use sed to replace all occurrences
