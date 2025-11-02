@@ -2,22 +2,6 @@
 # Implementation: ShellDetector
 # Description: Shell detection implementation
 
-# Description: Get the current operating system type
-# Parameters: None
-# Returns:
-#   0 - Always returns 0
-# Output:
-#   Echoes the OS type (linux, darwin, windows, freebsd, unknown)
-get_os_type() {
-    case "$(uname -s)" in
-        Linux*)     echo "linux" ;;
-        Darwin*)    echo "darwin" ;;
-        CYGWIN*|MINGW*|MSYS*) echo "windows" ;;
-        FreeBSD*)   echo "freebsd" ;;
-        *)          echo "unknown" ;;
-    esac
-}
-
 # Description: Detect the current shell type
 # Parameters: None
 # Returns:
