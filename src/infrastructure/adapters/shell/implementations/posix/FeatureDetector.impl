@@ -1,0 +1,173 @@
+#!/bin/sh
+# Implementation: FeatureDetector
+# Description: Feature detection implementation
+
+# Description: Check if the shell supports arrays
+# Parameters: None
+# Returns:
+#   0 - Arrays are supported
+#   1 - Arrays are not supported
+feature_detector_has_arrays() {
+    # Test if we can declare and use an array
+    if eval 'arr=(); arr[0]="test"' 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if the shell supports associative arrays
+# Parameters: None
+# Returns:
+#   0 - Associative arrays are supported
+#   1 - Associative arrays are not supported
+feature_detector_has_assoc_arrays() {
+    # Test if we can declare and use associative arrays
+    if eval 'declare -A assoc_arr=(); assoc_arr[key]="value"' 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if the shell supports process substitution
+# Parameters: None
+# Returns:
+#   0 - Process substitution is supported
+#   1 - Process substitution is not supported
+feature_detector_has_process_substitution() {
+    # Test if we can use process substitution
+    if eval 'echo $(cat <(echo test))' 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if the shell supports named pipes
+# Parameters: None
+# Returns:
+#   0 - Named pipes are supported
+#   1 - Named pipes are not supported
+feature_detector_has_named_pipes() {
+    # Create a temporary directory and named pipe for testing
+    temp_dir=$(mktemp -d)
+    if [ -z "$temp_dir" ]; then
+        return 1
+    fi
+    
+    pipe_path="$temp_dir/test_pipe"
+    if mkfifo "$pipe_path" 2>/dev/null; then
+        rm -rf "$temp_dir"
+        return 0
+    else
+        rm -rf "$temp_dir"
+        return 1
+    fi
+}
+
+# Description: Check if the shell supports function declarations
+# Parameters: None
+# Returns:
+#   0 - Function declarations are supported
+#   1 - Function declarations are not supported
+feature_detector_has_function_declarations() {
+    # Test if we can declare functions with the 'function' keyword
+    if eval 'function test_func() { echo success; }; test_func' 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if the shell supports advanced conditionals (e.g., [[ ]])
+# Parameters: None
+# Returns:
+#   0 - Advanced conditionals are supported
+#   1 - Advanced conditionals are not supported
+feature_detector_has_advanced_conditionals() {
+    # Test if we can use the [[ conditional
+    if eval '[[ "test" == "test" ]]' 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Get all available features in the current shell
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes available features as space-separated list
+feature_detector_get_available_features() {
+    features="basic"
+    
+    if feature_detector_has_arrays; then
+        features="$features arrays"
+    fi
+    
+    if feature_detector_has_assoc_arrays; then
+        features="$features assoc_arrays"
+    fi
+    
+    if feature_detector_has_process_substitution; then
+        features="$features process_substitution"
+    fi
+    
+    if feature_detector_has_named_pipes; then
+        features="$features named_pipes"
+    fi
+    
+    if feature_detector_has_function_declarations; then
+        features="$features function_declarations"
+    fi
+    
+    if feature_detector_has_advanced_conditionals; then
+        features="$features advanced_conditionals"
+    fi
+    
+    echo "$features"
+    return 0
+}
+
+# Description: Check if a specific feature is supported
+# Parameters:
+#   $1 - Feature name to check
+# Returns:
+#   0 - Feature is supported
+#   1 - Feature is not supported
+feature_detector_check_feature() {
+    if [ -z "$1" ]; then
+        return 1
+    fi
+    
+    case "$1" in
+        "arrays")
+            feature_detector_has_arrays
+            ;;
+        "assoc_arrays")
+            feature_detector_has_assoc_arrays
+            ;;
+        "process_substitution")
+            feature_detector_has_process_substitution
+            ;;
+        "named_pipes")
+            feature_detector_has_named_pipes
+            ;;
+        "function_declarations")
+            feature_detector_has_function_declarations
+            ;;
+        "advanced_conditionals")
+            feature_detector_has_advanced_conditionals
+            ;;
+        "basic")
+            # Basic features are always available
+            return 0
+            ;;
+        *)
+            # Unknown feature
+            return 1
+            ;;
+    esac
+}

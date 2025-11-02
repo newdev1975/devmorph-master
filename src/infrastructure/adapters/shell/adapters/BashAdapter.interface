@@ -1,0 +1,14 @@
+#!/bin/sh
+# Interface: BashAdapter
+# Description: Bash shell adapter interface
+
+# Interface definition for Bash shell adapter
+# This defines the contract for Bash-specific shell operations
+
+# Interface: BashAdapter
+# Extends: ShellAdapter
+# Methods:
+#   get_name(): string
+#   is_compatible(): boolean
+#   get_capabilities(): array
+#   execute_bash_command(command: string): ExecutionResult

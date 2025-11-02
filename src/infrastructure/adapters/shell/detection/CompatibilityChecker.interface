@@ -1,0 +1,16 @@
+#!/bin/sh
+# Interface: CompatibilityChecker
+# Description: Compatibility checking interface
+
+# Interface definition for compatibility checking
+# This defines the contract for checking cross-platform compatibility
+
+# Interface: CompatibilityChecker
+# Methods:
+#   check_posix_compatibility(): boolean
+#   check_bash_compatibility(): boolean
+#   check_zsh_compatibility(): boolean
+#   check_powershell_compatibility(): boolean
+#   check_dash_compatibility(): boolean
+#   get_compatibility_report(): CompatibilityReport
+#   validate_platform_support(platform: string): boolean

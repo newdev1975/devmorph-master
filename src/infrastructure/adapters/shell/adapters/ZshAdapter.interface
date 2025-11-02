@@ -1,0 +1,14 @@
+#!/bin/sh
+# Interface: ZshAdapter
+# Description: Zsh shell adapter interface
+
+# Interface definition for Zsh shell adapter
+# This defines the contract for Zsh-specific shell operations
+
+# Interface: ZshAdapter
+# Extends: ShellAdapter
+# Methods:
+#   get_name(): string
+#   is_compatible(): boolean
+#   get_capabilities(): array
+#   execute_zsh_command(command: string): ExecutionResult

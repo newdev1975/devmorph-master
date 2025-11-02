@@ -1,0 +1,13 @@
+#!/bin/sh
+# Interface: ShellException
+# Description: Shell exception interface
+
+# Interface definition for shell exceptions
+# This defines the contract for shell-related exceptions
+
+# Interface: ShellException
+# Methods:
+#   get_error_code(): number
+#   get_error_message(): string
+#   get_severity(): Severity
+#   handle_exception(): void

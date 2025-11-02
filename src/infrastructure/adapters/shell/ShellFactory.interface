@@ -1,0 +1,16 @@
+#!/bin/sh
+# Interface: ShellFactory
+# Description: Shell factory interface for creating appropriate shell adapters
+
+# Interface definition for shell factory
+# This defines the contract for creating shell adapter instances
+
+# Interface: ShellFactory
+# Methods:
+#   create_adapter(): ShellAdapter
+#   create_file_operations(): FileOperations
+#   create_string_operations(): StringOperations
+#   create_process_operations(): ProcessOperations
+#   create_system_operations(): SystemOperations
+#   create_shell_detector(): ShellDetector
+#   create_feature_detector(): FeatureDetector

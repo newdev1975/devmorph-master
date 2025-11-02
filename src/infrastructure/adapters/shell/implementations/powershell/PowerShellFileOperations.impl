@@ -1,0 +1,195 @@
+#!/bin/sh
+# Implementation: PowerShellFileOperations
+# Description: PowerShell-specific file operations implementation
+
+# Description: Create a directory using PowerShell
+# Parameters:
+#   $1 - Directory path to create
+# Returns:
+#   0 - Directory created successfully
+#   1 - Directory creation failed
+powershell_mkdir() {
+    if [ -z "$1" ]; then
+        echo "ERROR: powershell_mkdir: No directory path provided" >&2
+        return 1
+    fi
+
+    # Use PowerShell to create directory
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "New-Item -ItemType Directory -Path '$1' -Force" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "New-Item -ItemType Directory -Path '$1' -Force" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command
+        mkdir -p "$1" 2>/dev/null
+        return $?
+    fi
+}
+
+# Description: Remove a file or directory using PowerShell
+# Parameters:
+#   $1 - Path to remove
+# Returns:
+#   0 - Removal successful
+#   1 - Removal failed
+powershell_rm() {
+    if [ -z "$1" ]; then
+        echo "ERROR: powershell_rm: No path provided" >&2
+        return 1
+    fi
+
+    # Use PowerShell to remove item
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "Remove-Item -Path '$1' -Recurse -Force" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "Remove-Item -Path '$1' -Recurse -Force" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command
+        if [ -d "$1" ] && [ ! -L "$1" ]; then
+            rm -rf "$1" 2>/dev/null
+        else
+            rm -f "$1" 2>/dev/null
+        fi
+        return $?
+    fi
+}
+
+# Description: Copy a file or directory using PowerShell
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Copy successful
+#   1 - Copy failed
+powershell_cp() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: powershell_cp: Source and destination paths required" >&2
+        return 1
+    fi
+
+    # Use PowerShell to copy item
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "Copy-Item -Path '$1' -Destination '$2' -Recurse -Force" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "Copy-Item -Path '$1' -Destination '$2' -Recurse -Force" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command
+        if [ -d "$1" ]; then
+            cp -r "$1" "$2" 2>/dev/null
+        else
+            cp "$1" "$2" 2>/dev/null
+        fi
+        return $?
+    fi
+}
+
+# Description: Move a file or directory using PowerShell
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Move successful
+#   1 - Move failed
+powershell_mv() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: powershell_mv: Source and destination paths required" >&2
+        return 1
+    fi
+
+    # Use PowerShell to move item
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "Move-Item -Path '$1' -Destination '$2' -Force" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "Move-Item -Path '$1' -Destination '$2' -Force" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command
+        mv "$1" "$2" 2>/dev/null
+        return $?
+    fi
+}
+
+# Description: Check if a path exists using PowerShell
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path exists
+#   1 - Path does not exist
+powershell_exists() {
+    if [ -z "$1" ]; then
+        echo "ERROR: powershell_exists: No path provided" >&2
+        return 1
+    fi
+
+    # Use PowerShell to test path
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "if (Test-Path '$1') { exit 0 } else { exit 1 }" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "if (Test-Path '$1') { exit 0 } else { exit 1 }" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command
+        [ -e "$1" ]
+        return $?
+    fi
+}
+
+# Description: Check if a path is a directory using PowerShell
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path is a directory
+#   1 - Path is not a directory
+powershell_is_directory() {
+    if [ -z "$1" ]; then
+        echo "ERROR: powershell_is_directory: No path provided" >&2
+        return 1
+    fi
+
+    # Use PowerShell to check if path is a directory
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "if (Test-Path '$1' -PathType Container) { exit 0 } else { exit 1 }" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "if (Test-Path '$1' -PathType Container) { exit 0 } else { exit 1 }" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command
+        [ -d "$1" ]
+        return $?
+    fi
+}
+
+# Description: Check if a path is a file using PowerShell
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path is a file
+#   1 - Path is not a file
+powershell_is_file() {
+    if [ -z "$1" ]; then
+        echo "ERROR: powershell_is_file: No path provided" >&2
+        return 1
+    fi
+
+    # Use PowerShell to check if path is a file
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "if (Test-Path '$1' -PathType Leaf) { exit 0 } else { exit 1 }" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "if (Test-Path '$1' -PathType Leaf) { exit 0 } else { exit 1 }" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command
+        [ -f "$1" ]
+        return $?
+    fi
+}
