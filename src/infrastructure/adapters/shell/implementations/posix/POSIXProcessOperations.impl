@@ -1,0 +1,154 @@
+#!/bin/sh
+# Implementation: POSIXProcessOperations
+# Description: POSIX-compliant process operations implementation
+
+# Import shell utilities
+if [ -f "$(dirname "$0")/../shell_utils.sh" ]; then
+    . "$(dirname "$0")/../shell_utils.sh"
+elif [ -f "./shell_utils.sh" ]; then
+    . "./shell_utils.sh"
+else
+    echo "ERROR: shell_utils.sh not found" >&2
+    exit 1
+fi
+
+# Description: Execute a command and return result
+# Parameters:
+#   $@ - Command and arguments to execute
+# Returns:
+#   0 - Command executed successfully
+#   Non-zero - Command execution failed with exit code
+# Output:
+#   Command output if successful
+posix_execute() {
+    if [ $# -eq 0 ]; then
+        echo "ERROR: posix_execute: No command provided" >&2
+        return 1
+    fi
+
+    # Execute the command and capture output and exit code
+    "$@"
+    return $?
+}
+
+# Description: Get the current process ID
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Current process ID
+posix_get_pid() {
+    echo "$$"
+    return 0
+}
+
+# Description: Kill a process by PID
+# Parameters:
+#   $1 - Process ID to kill
+# Returns:
+#   0 - Process killed successfully
+#   1 - Failed to kill process
+posix_kill_process() {
+    if [ -z "$1" ]; then
+        echo "ERROR: posix_kill_process: No PID provided" >&2
+        return 1
+    fi
+
+    # Check if the PID is a number
+    if ! echo "$1" | grep -qE '^[0-9]+$'; then
+        echo "ERROR: posix_kill_process: Invalid PID: $1" >&2
+        return 1
+    fi
+
+    # Check if the process exists before attempting to kill it
+    if kill -0 "$1" 2>/dev/null; then
+        # Process exists, kill it
+        if kill "$1" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: posix_kill_process: Failed to kill process $1" >&2
+            return 1
+        fi
+    else
+        # Process doesn't exist
+        echo "ERROR: posix_kill_process: Process $1 does not exist" >&2
+        return 1
+    fi
+}
+
+# Description: Check if a process is running
+# Parameters:
+#   $1 - Process ID to check
+# Returns:
+#   0 - Process is running
+#   1 - Process is not running
+posix_is_process_running() {
+    if [ -z "$1" ]; then
+        return 1
+    fi
+
+    # Check if the PID is a number
+    if ! echo "$1" | grep -qE '^[0-9]+$'; then
+        return 1
+    fi
+
+    # Use kill -0 to check if process exists without actually killing it
+    kill -0 "$1" 2>/dev/null
+    return $?
+}
+
+# Description: Wait for a process to finish with timeout
+# Parameters:
+#   $1 - Process ID to wait for
+#   $2 - Timeout in seconds (optional, default is 60)
+# Returns:
+#   0 - Process finished within timeout
+#   1 - Process did not finish within timeout
+posix_wait_for_process() {
+    if [ -z "$1" ]; then
+        return 1
+    fi
+
+    pid="$1"
+    timeout="${2:-60}"  # Default timeout 60 seconds if not provided
+
+    # Check if the PID is a number
+    if ! echo "$pid" | grep -qE '^[0-9]+$'; then
+        return 1
+    fi
+
+    count=0
+    while [ $count -lt $timeout ]; do
+        if ! kill -0 "$pid" 2>/dev/null; then
+            # Process is no longer running
+            return 0
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+
+    # Timeout reached
+    return 1
+}
+
+# Description: Execute a command in the background
+# Parameters:
+#   $@ - Command and arguments to execute in background
+# Returns:
+#   0 - Command started in background successfully
+#   1 - Failed to start command in background
+# Output:
+#   Process ID of the background process
+posix_background_execute() {
+    if [ $# -eq 0 ]; then
+        echo "ERROR: posix_background_execute: No command provided" >&2
+        return 1
+    fi
+
+    # Execute command in background
+    "$@" &
+    bg_pid=$!
+    
+    echo "$bg_pid"
+    return 0
+}
