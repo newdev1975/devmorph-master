@@ -1,0 +1,192 @@
+#!/bin/sh
+# Implementation: ServiceResolver.impl
+# Description: Service resolution system with dependency injection for the DI container
+
+# Description: Resolve a service instance with its dependencies
+# Parameters:
+#   $1 - interface name
+#   $2 - resolution path (for circular dependency detection)
+# Returns: 0 on success, 1 on failure
+# Output: resolved service instance
+service_resolver_resolve() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "service_resolver_resolve: interface name required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    resolution_path="${2:-}"
+    
+    # Check circular dependencies using resolution path
+    if [ -n "$resolution_path" ]; then
+        # Check if interface is already in the resolution path
+        # We use a simple pattern matching approach for POSIX compatibility
+        current_path="$resolution_path"
+        while [ -n "$current_path" ]; do
+            # Extract the first element in the path
+            if [ "${current_path#*$interface_name->}" != "$current_path" ] || [ "$current_path" = "$interface_name" ]; then
+                log_error "service_resolver_resolve: circular dependency detected: $current_path->$interface_name"
+                return 1
+            fi
+            # Move to next element in path (simplified approach)
+            break
+        done
+    fi
+    
+    # Get binding information for the interface
+    binding_info=$(service_registry_get "$interface_name") || return 1
+    
+    # Extract implementation and lifetime from binding
+    implementation=$(printf "%s" "$binding_info" | cut -d':' -f1)
+    lifetime=$(printf "%s" "$binding_info" | cut -d':' -f2-)
+    
+    # Update resolution path for dependency resolution
+    new_resolution_path="$resolution_path"
+    if [ -n "$new_resolution_path" ]; then
+        new_resolution_path="$new_resolution_path->$interface_name"
+    else
+        new_resolution_path="$interface_name"
+    fi
+    
+    # Get dependencies for this service
+    dependencies=$(get_service_dependencies "$implementation") || {
+        # If no dependencies found, continue with empty dependencies
+        dependencies=""
+    }
+    
+    # Resolve each dependency
+    resolved_deps=""
+    for dep_interface in $dependencies; do
+        dep_instance=$(service_resolver_resolve "$dep_interface" "$new_resolution_path") || return 1
+        resolved_deps="$resolved_deps $dep_instance"
+    done
+    
+    # Create service instance with resolved dependencies
+    create_service_instance "$implementation" "$resolved_deps"
+}
+
+# Description: Get dependencies for a service implementation
+# Parameters:
+#   $1 - implementation identifier
+# Returns: 0 on success, 1 on failure
+# Output: space-separated list of dependency interface names
+get_service_dependencies() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "get_service_dependencies: implementation identifier required"
+        return 1
+    fi
+    
+    implementation="$1"
+    
+    # This function would look up dependency information for the service
+    # For now, we'll check for a dependency file related to the implementation
+    # Format: implementation name with slashes replaced by underscores, followed by .deps
+    # For example: FileLogger -> FileLogger.deps, com.example.UserService -> com_example_UserService.deps
+    
+    # Sanitize implementation name for use in filename
+    dep_filename=$(printf "%s" "$implementation" | tr '/' '_' | tr '.' '_')
+    dep_file="$DI_REGISTRY_DIR/${dep_filename}.deps"
+    
+    # If dependency file exists, read it
+    if [ -f "$dep_file" ]; then
+        cat "$dep_file"
+        return 0
+    fi
+    
+    # Try to extract dependencies from a more general approach
+    # For now, return empty string (no dependencies)
+    # This would be enhanced in a real implementation to read dependency metadata
+    echo ""
+    return 0
+}
+
+# Description: Set dependencies for a service implementation
+# Parameters:
+#   $1 - implementation identifier
+#   $@ - dependency interface names
+# Returns: 0 on success, 1 on failure
+set_service_dependencies() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "set_service_dependencies: implementation identifier required"
+        return 1
+    fi
+    
+    implementation="$1"
+    shift  # Remove implementation from arguments
+    
+    # Sanitize implementation name for use in filename
+    dep_filename=$(printf "%s" "$implementation" | tr '/' '_' | tr '.' '_')
+    dep_file="$DI_REGISTRY_DIR/${dep_filename}.deps"
+    
+    # Write dependencies to file (one per line for easier processing)
+    for dep in "$@"; do
+        echo "$dep"
+    done > "$dep_file" || return 1
+    
+    return 0
+}
+
+# Description: Create a service instance with dependencies
+# Parameters:
+#   $1 - implementation identifier
+#   $@ - dependencies
+# Returns: 0 on success, 1 on failure
+# Output: service instance identifier (or output of the service creation)
+create_service_instance() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "create_service_instance: implementation identifier required"
+        return 1
+    fi
+    
+    implementation="$1"
+    shift  # Remove implementation from arguments
+    
+    # The implementation can be:
+    # 1. A function name that exists in the current shell context
+    # 2. A path to a shell script
+    # 3. A special identifier for built-in services
+    
+    if command -v "$implementation" >/dev/null 2>&1; then
+        # If implementation is a command/function, call it with dependencies as arguments
+        # Note: This is a simplified approach - in a real system, more sophisticated
+        # instantiation would be needed
+        "$implementation" "$@" || return 1
+    elif [ -f "$implementation" ] && [ -r "$implementation" ]; then
+        # If implementation is a file, source it or execute it with dependencies
+        # This is a basic approach, real implementation would be more sophisticated
+        . "$implementation" || return 1
+    else
+        # If no command or file found, return the implementation identifier itself
+        # This supports string-based service identifiers that are passed through
+        echo "$implementation"
+    fi
+    
+    return 0
+}
+
+# Description: Pre-resolve all dependencies for an interface (for performance)
+# Parameters:
+#   $1 - interface name
+# Returns: 0 on success, 1 on failure
+service_resolver_pre_resolve() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "service_resolver_pre_resolve: interface name required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    
+    # Get binding information
+    binding_info=$(service_registry_get "$interface_name") || return 1
+    
+    # Get and resolve dependencies
+    dependencies=$(get_service_dependencies "$(printf "%s" "$binding_info" | cut -d':' -f1)") || return 1
+    
+    # Pre-resolve each dependency
+    for dep_interface in $dependencies; do
+        # Try to resolve the dependency (this will create singleton instances if needed)
+        service_resolver_resolve "$dep_interface" || return 1
+    done
+    
+    return 0
+}
