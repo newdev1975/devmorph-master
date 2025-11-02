@@ -1,0 +1,11 @@
+// Event Handler interface concept
+interface EventHandler {
+    // Handle the event
+    handle(event) -> void
+    
+    // Check if this handler can handle the event
+    canHandle(event) -> boolean
+    
+    // Get the event types this handler can process
+    getSupportedEventTypes() -> array<string>
+}

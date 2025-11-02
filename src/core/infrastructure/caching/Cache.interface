@@ -1,0 +1,20 @@
+// Cache interface concept
+interface Cache {
+    // Get a value from the cache by key
+    get(key) -> mixed or null
+    
+    // Set a value in the cache with an optional TTL
+    set(key, value, ttl) -> void
+    
+    // Delete a value from the cache
+    delete(key) -> void
+    
+    // Check if a key exists in the cache
+    has(key) -> boolean
+    
+    // Clear all values from the cache
+    clear() -> void
+    
+    // Get cache statistics
+    getStats() -> object
+}
