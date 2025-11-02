@@ -1,0 +1,17 @@
+// Application Exception interface concept
+interface ApplicationException {
+    // Get the error code
+    getErrorCode() -> string
+    
+    // Get the error message
+    getMessage() -> string
+    
+    // Get additional error context
+    getContext() -> object
+    
+    // Get the timestamp of when the exception occurred
+    getTimestamp() -> DateTime
+    
+    // Get the severity level of the exception
+    getSeverity() -> string
+}
