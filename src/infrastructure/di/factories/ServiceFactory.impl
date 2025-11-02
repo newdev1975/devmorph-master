@@ -1,0 +1,266 @@
+#!/bin/sh
+# Implementation: ServiceFactory.impl
+# Description: Service factory patterns for the DI container
+
+# Description: Create a service factory for dynamic service creation
+# Parameters:
+#   $1 - factory identifier
+#   $2 - implementation to create
+#   $3 - optional configuration for factory
+# Returns: 0 on success, 1 on failure
+service_factory_create() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "service_factory_create: factory identifier and implementation required"
+        return 1
+    fi
+    
+    factory_id="$1"
+    implementation="$2"
+    config="${3:-}"
+    
+    # Store factory configuration
+    factory_dir="$DI_REGISTRY_DIR/factories"
+    mkdir -p "$factory_dir" || return 1
+    
+    factory_file="$factory_dir/$factory_id"
+    printf "%s:%s" "$implementation" "$config" > "$factory_file" || return 1
+    
+    return 0
+}
+
+# Description: Get a service from a factory
+# Parameters:
+#   $1 - factory identifier
+#   $@ - parameters for service creation
+# Returns: 0 on success, 1 on failure
+# Output: created service instance
+service_factory_get() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "service_factory_get: factory identifier required"
+        return 1
+    fi
+    
+    factory_id="$1"
+    shift  # Remove factory_id from arguments
+    
+    # Get factory configuration
+    factory_file="$DI_REGISTRY_DIR/factories/$factory_id"
+    if [ ! -f "$factory_file" ]; then
+        log_error "service_factory_get: factory '$factory_id' not found"
+        return 1
+    fi
+    
+    factory_config=$(cat "$factory_file")
+    implementation=$(printf "%s" "$factory_config" | cut -d':' -f1)
+    config=$(printf "%s" "$factory_config" | cut -d':' -f2-)
+    
+    # Create service using implementation and parameters
+    # For this implementation, we'll call the implementation with provided parameters
+    create_service_with_params "$implementation" "$config" "$@" || return 1
+}
+
+# Description: Create service with parameters
+# Parameters:
+#   $1 - implementation
+#   $2 - configuration
+#   $@ - parameters for service creation
+# Returns: 0 on success, 1 on failure
+# Output: created service instance
+create_service_with_params() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "create_service_with_params: implementation required"
+        return 1
+    fi
+    
+    implementation="$1"
+    config="$2"
+    shift 2  # Remove implementation and config
+    
+    # The implementation can be:
+    # 1. A command/function that accepts parameters
+    # 2. A script that accepts parameters
+    # 3. A special instruction for creating the service
+    
+    if command -v "$implementation" >/dev/null 2>&1; then
+        # If implementation is a command/function, call it with parameters
+        "$implementation" "$@" || return 1
+    elif [ -f "$implementation" ] && [ -r "$implementation" ]; then
+        # If implementation is a file, execute it with parameters
+        "$implementation" "$@" || return 1
+    else
+        # Default behavior: return the implementation identifier with parameters
+        # In a more complex system, you might do more sophisticated processing
+        echo "$implementation $*"
+    fi
+    
+    return 0
+}
+
+# Description: Register a parameterized service with the container
+# Parameters:
+#   $1 - interface name
+#   $2 - implementation
+#   $3 - lifetime
+#   $@ - additional parameters for the service
+# Returns: 0 on success, 1 on failure
+service_factory_register_parameterized() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "service_factory_register_parameterized: interface name and implementation required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    implementation="$2"
+    lifetime="${3:-transient}"
+    shift 3  # Remove interface, implementation, and lifetime
+    
+    # Store the service parameters
+    service_params_file="$DI_REGISTRY_DIR/${interface_name}.params"
+    for param in "$@"; do
+        echo "$param" >> "$service_params_file"
+    done
+    
+    # Register the service as normal
+    container_register "$interface_name" "$implementation" "$lifetime" || return 1
+    
+    return 0
+}
+
+# Description: Create a service with pre-stored parameters
+# Parameters:
+#   $1 - interface name
+# Returns: 0 on success, 1 on failure
+# Output: created service instance
+service_factory_create_with_stored_params() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "service_factory_create_with_stored_params: interface name required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    
+    # Get stored parameters
+    service_params_file="$DI_REGISTRY_DIR/${interface_name}.params"
+    if [ -f "$service_params_file" ]; then
+        # Read parameters and use them to create the service
+        params=$(cat "$service_params_file" | tr '\n' ' ')
+        # Get the implementation from the registry
+        binding_info=$(service_registry_get "$interface_name") || return 1
+        implementation=$(printf "%s" "$binding_info" | cut -d':' -f1)
+        
+        # Create service with stored parameters
+        create_service_with_params "$implementation" "" $params
+    else
+        # If no stored parameters, create normally
+        service_resolver_resolve "$interface_name" || return 1
+    fi
+}
+
+# Description: Create an abstract factory for a service type
+# Parameters:
+#   $1 - abstract factory interface name
+#   $2 - concrete factory implementation
+# Returns: 0 on success, 1 on failure
+abstract_factory_create() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "abstract_factory_create: abstract factory interface and implementation required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    implementation="$2"
+    
+    # Register the abstract factory as a service in the container
+    container_register "$interface_name" "$implementation" "singleton" || return 1
+    
+    return 0
+}
+
+# Description: Create a builder pattern for complex service construction
+# Parameters:
+#   $1 - builder identifier
+#   $2 - target implementation
+# Returns: 0 on success, 1 on failure
+builder_create() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "builder_create: builder identifier and target implementation required"
+        return 1
+    fi
+    
+    builder_id="$1"
+    target_implementation="$2"
+    
+    # Store builder configuration
+    builder_dir="$DI_REGISTRY_DIR/builders"
+    mkdir -p "$builder_dir" || return 1
+    
+    builder_file="$builder_dir/$builder_id"
+    echo "$target_implementation" > "$builder_file" || return 1
+    
+    # Initialize builder parameters file
+    builder_params_file="$builder_dir/${builder_id}.params"
+    touch "$builder_params_file" || return 1
+    
+    return 0
+}
+
+# Description: Set a parameter for a builder
+# Parameters:
+#   $1 - builder identifier
+#   $2 - parameter name
+#   $3 - parameter value
+# Returns: 0 on success, 1 on failure
+builder_set_param() {
+    if [ $# -lt 3 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "builder_set_param: builder identifier, parameter name, and value required"
+        return 1
+    fi
+    
+    builder_id="$1"
+    param_name="$2"
+    param_value="$3"
+    
+    builder_params_file="$DI_REGISTRY_DIR/builders/${builder_id}.params"
+    if [ ! -f "$builder_params_file" ]; then
+        log_error "builder_set_param: builder '$builder_id' not found"
+        return 1
+    fi
+    
+    # Store the parameter
+    printf "%s=%s\n" "$param_name" "$param_value" >> "$builder_params_file" || return 1
+    
+    return 0
+}
+
+# Description: Build a service using a builder
+# Parameters:
+#   $1 - builder identifier
+# Returns: 0 on success, 1 on failure
+# Output: built service instance
+builder_build() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "builder_build: builder identifier required"
+        return 1
+    fi
+    
+    builder_id="$1"
+    
+    # Get target implementation
+    builder_file="$DI_REGISTRY_DIR/builders/$builder_id"
+    if [ ! -f "$builder_file" ]; then
+        log_error "builder_build: builder '$builder_id' not found"
+        return 1
+    fi
+    
+    target_implementation=$(cat "$builder_file")
+    
+    # Get parameters for the build
+    builder_params_file="$DI_REGISTRY_DIR/builders/${builder_id}.params"
+    if [ -f "$builder_params_file" ]; then
+        # For simplicity in this implementation, we'll pass the parameters file as context
+        create_service_with_params "$target_implementation" "$builder_params_file"
+    else
+        # If no parameters, create without them
+        create_service_with_params "$target_implementation" ""
+    fi
+}
