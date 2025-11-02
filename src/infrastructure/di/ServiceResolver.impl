@@ -17,20 +17,13 @@ service_resolver_resolve() {
     interface_name="$1"
     resolution_path="${2:-}"
     
-    # Check circular dependencies using resolution path
+    # Use the more robust circular dependency detector
     if [ -n "$resolution_path" ]; then
         # Check if interface is already in the resolution path
-        # We use a simple pattern matching approach for POSIX compatibility
-        current_path="$resolution_path"
-        while [ -n "$current_path" ]; do
-            # Extract the first element in the path
-            if [ "${current_path#*$interface_name->}" != "$current_path" ] || [ "$current_path" = "$interface_name" ]; then
-                log_error "service_resolver_resolve: circular dependency detected: $current_path->$interface_name"
-                return 1
-            fi
-            # Move to next element in path (simplified approach)
-            break
-        done
+        if printf "%s" "|$resolution_path|" | grep -F "|$interface_name|" >/dev/null 2>&1; then
+            log_error "service_resolver_resolve: circular dependency detected: $resolution_path|$interface_name"
+            return 1
+        fi
     fi
     
     # Get binding information for the interface
@@ -43,7 +36,7 @@ service_resolver_resolve() {
     # Update resolution path for dependency resolution
     new_resolution_path="$resolution_path"
     if [ -n "$new_resolution_path" ]; then
-        new_resolution_path="$new_resolution_path->$interface_name"
+        new_resolution_path="$new_resolution_path|$interface_name"
     else
         new_resolution_path="$interface_name"
     fi
@@ -62,7 +55,7 @@ service_resolver_resolve() {
     done
     
     # Create service instance with resolved dependencies
-    create_service_instance "$implementation" "$resolved_deps"
+    create_service_instance "$implementation" $resolved_deps
 }
 
 # Description: Get dependencies for a service implementation

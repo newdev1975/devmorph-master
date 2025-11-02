@@ -1,0 +1,175 @@
+#!/bin/sh
+# Implementation: CircularDependencyDetector.impl
+# Description: Circular dependency detection for the DI container
+
+# Description: Check if adding a dependency would create a circular dependency
+# Parameters:
+#   $1 - interface name that wants to depend on something
+#   $2 - interface name that is being depended on
+# Returns: 0 if safe (no circular dependency), 1 if circular dependency detected
+circular_dependency_check() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "circular_dependency_check: source and target interface names required"
+        return 1
+    fi
+    
+    source_interface="$1"
+    target_interface="$2"
+    
+    # Check direct circular dependency (A depends on A) 
+    if [ "$source_interface" = "$target_interface" ]; then
+        log_error "circular_dependency_check: direct circular dependency detected: $source_interface -> $target_interface"
+        return 1
+    fi
+    
+    # We need to trace the dependency graph to see if creating
+    # source_interface -> target_interface would create a cycle
+    
+    # Check if target has dependencies that lead back to source
+    if dependency_path_exists "$target_interface" "$source_interface"; then
+        log_error "circular_dependency_check: circular dependency would be created: $source_interface -> $target_interface creates cycle with path $target_interface -> ... -> $source_interface"
+        return 1
+    fi
+    
+    return 0  # Safe to add dependency
+}
+
+# Description: Check if there's a dependency path from source to target
+# Parameters:
+#   $1 - source interface
+#   $2 - target interface
+# Returns: 0 if path exists, 1 if no path exists
+dependency_path_exists() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        return 1  # No path exists if parameters are invalid
+    fi
+    
+    source="$1"
+    target="$2"
+    
+    # If source is the same as target, path exists (direct)
+    if [ "$source" = "$target" ]; then
+        return 0
+    fi
+    
+    # Get dependencies of the source
+    source_implementation=$(get_implementation_for_interface "$source") || return 1
+    source_dependencies=$(get_service_dependencies "$source_implementation") || return 1
+    
+    # Check each dependency for a path to target
+    for dep_interface in $source_dependencies; do
+        # Skip if dep_interface is the target (direct dependency)
+        if [ "$dep_interface" = "$target" ]; then
+            return 0
+        fi
+        
+        # Recursively check if there's a path from this dependency to target
+        if dependency_path_exists "$dep_interface" "$target"; then
+            return 0
+        fi
+    done
+    
+    return 1  # No path found
+}
+
+# Description: Get implementation for interface from registry
+# Parameters:
+#   $1 - interface name
+# Returns: 0 on success, 1 on failure
+# Output: implementation identifier
+get_implementation_for_interface() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        return 1
+    fi
+    
+    interface_name="$1"
+    binding_info=$(service_registry_get "$interface_name") || return 1
+    implementation=$(printf "%s" "$binding_info" | cut -d':' -f1)
+    echo "$implementation"
+    return 0
+}
+
+# Description: Validate all registered dependencies for circular dependencies
+# Parameters: None
+# Returns: 0 if no circular dependencies, 1 if circular dependencies found
+circular_dependency_validate_all() {
+    all_interfaces=$(service_registry_get_all_interfaces)
+    
+    circular_found=0
+    
+    # Check each interface against all its dependencies
+    for interface in $all_interfaces; do
+        implementation=$(get_implementation_for_interface "$interface") || continue
+        dependencies=$(get_service_dependencies "$implementation") || continue
+        
+        for dep_interface in $dependencies; do
+            # Check if adding this dependency is valid
+            if ! circular_dependency_check "$interface" "$dep_interface"; then
+                circular_found=1
+            fi
+        done
+    done
+    
+    if [ $circular_found -eq 1 ]; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# Description: Enhanced service resolver with circular dependency detection
+# Parameters:
+#   $1 - interface name
+#   $2 - resolution path (for circular dependency detection)
+# Returns: 0 on success, 1 on failure
+# Output: resolved service instance
+circular_aware_resolve() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "circular_aware_resolve: interface name required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    resolution_path="${2:-}"
+    
+    # Check if interface is already in the resolution path (circular dependency)
+    if [ -n "$resolution_path" ]; then
+        # Check if interface is already in path by seeing if the path contains the interface
+        # with proper delimiters
+        if printf "%s" "|$resolution_path|" | grep -F "|$interface_name|" >/dev/null 2>&1; then
+            log_error "circular_aware_resolve: circular dependency detected in path: $resolution_path|$interface_name"
+            return 1
+        fi
+    fi
+    
+    # Construct new resolution path
+    new_path="$resolution_path"
+    if [ -n "$new_path" ]; then
+        new_path="$new_path|$interface_name"
+    else
+        new_path="$interface_name"
+    fi
+    
+    # Get binding information for the interface
+    binding_info=$(service_registry_get "$interface_name") || return 1
+    
+    # Extract implementation and lifetime from binding
+    implementation=$(printf "%s" "$binding_info" | cut -d':' -f1)
+    lifetime=$(printf "%s" "$binding_info" | cut -d':' -f2-)
+    
+    # Get dependencies for this service
+    dependencies=$(get_service_dependencies "$implementation") || {
+        # If no dependencies found, continue with empty dependencies
+        dependencies=""
+    }
+    
+    # Resolve each dependency with circular detection
+    resolved_deps=""
+    for dep_interface in $dependencies; do
+        dep_instance=$(circular_aware_resolve "$dep_interface" "$new_path") || return 1
+        resolved_deps="$resolved_deps $dep_instance"
+    done
+    
+    # Create service instance with resolved dependencies
+    create_service_instance "$implementation" $resolved_deps
+}
