@@ -1,0 +1,224 @@
+#!/bin/sh
+# Implementation: ExceptionHandling.impl
+# Description: Exception handling utilities for the DI container
+
+# Description: Throw a DI-specific error
+# Parameters:
+#   $1 - error type
+#   $2 - error message
+#   $3 - optional error code
+# Returns: 1 always (as it's an error)
+di_throw_error() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: di_throw_error: error type and message required" >&2
+        return 1
+    fi
+    
+    error_type="$1"
+    error_message="$2"
+    error_code="${3:-1}"  # Default to 1 if not provided
+    
+    case "$error_type" in
+        "ServiceNotFound")
+            echo "ERROR (ServiceNotFound): $error_message" >&2
+            exit 1
+            ;;
+        "CircularDependency")
+            echo "ERROR (CircularDependency): $error_message" >&2
+            exit 2
+            ;;
+        "InvalidBinding")
+            echo "ERROR (InvalidBinding): $error_message" >&2
+            exit 3
+            ;;
+        "LifetimeError")
+            echo "ERROR (LifetimeError): $error_message" >&2
+            exit 4
+            ;;
+        "DependencyResolutionError")
+            echo "ERROR (DependencyResolutionError): $error_message" >&2
+            exit 5
+            ;;
+        *)
+            # Generic error for unknown types
+            echo "ERROR ($error_type): $error_message" >&2
+            exit "$error_code"
+            ;;
+    esac
+}
+
+# Description: Log a DI-specific error without exiting
+# Parameters:
+#   $1 - error type
+#   $2 - error message
+# Returns: 0 on success
+di_log_error() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: di_log_error: error type and message required" >&2
+        return 1
+    fi
+    
+    error_type="$1"
+    error_message="$2"
+    
+    case "$error_type" in
+        "ServiceNotFound")
+            echo "ERROR (ServiceNotFound): $error_message" >&2
+            ;;
+        "CircularDependency")
+            echo "ERROR (CircularDependency): $error_message" >&2
+            ;;
+        "InvalidBinding")
+            echo "ERROR (InvalidBinding): $error_message" >&2
+            ;;
+        "LifetimeError")
+            echo "ERROR (LifetimeError): $error_message" >&2
+            ;;
+        "DependencyResolutionError")
+            echo "ERROR (DependencyResolutionError): $error_message" >&2
+            ;;
+        *)
+            # Generic error for unknown types
+            echo "ERROR ($error_type): $error_message" >&2
+            ;;
+    esac
+    
+    return 0
+}
+
+# Description: Validate a service binding before registration
+# Parameters:
+#   $1 - interface name
+#   $2 - implementation
+#   $3 - lifetime
+# Returns: 0 if valid, 1 if invalid
+validate_binding() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        di_log_error "InvalidBinding" "Interface name and implementation required for validation"
+        return 1
+    fi
+    
+    interface_name="$1"
+    implementation="$2"
+    lifetime="${3:-transient}"
+    
+    # Validate interface name format
+    if ! printf "%s" "$interface_name" | grep -E '^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*[a-zA-Z0-9_-]$|^[a-zA-Z0-9_-]+$' >/dev/null 2>&1; then
+        di_log_error "InvalidBinding" "Invalid interface name format: $interface_name"
+        return 1
+    fi
+    
+    # Validate implementation format
+    if ! printf "%s" "$implementation" | grep -E '^[a-zA-Z0-9_.\-/][a-zA-Z0-9_.\-/]*$' >/dev/null 2>&1; then
+        di_log_error "InvalidBinding" "Invalid implementation format: $implementation"
+        return 1
+    fi
+    
+    # Validate lifetime
+    case "$lifetime" in
+        "singleton"|"transient"|"scoped")
+            # Valid lifetime
+            ;;
+        *)
+            di_log_error "InvalidBinding" "Invalid lifetime '$lifetime', must be singleton, transient, or scoped"
+            return 1
+            ;;
+    esac
+    
+    # Check if interface is already registered (depending on implementation, this might be allowed or not)
+    # For this implementation, we'll allow re-registration (overwrite)
+    return 0
+}
+
+# Description: Validate if a service can be resolved
+# Parameters:
+#   $1 - interface name
+# Returns: 0 if valid, 1 if invalid
+validate_can_resolve() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        di_log_error "InvalidBinding" "Interface name required for resolution validation"
+        return 1
+    fi
+    
+    interface_name="$1"
+    
+    # Check if interface is registered
+    if ! container_has "$interface_name"; then
+        di_log_error "ServiceNotFound" "Interface '$interface_name' is not registered in container"
+        return 1
+    fi
+    
+    # Get binding to check if it's properly configured
+    binding_info=$(service_registry_get "$interface_name") || {
+        di_log_error "ServiceNotFound" "Could not retrieve binding for interface '$interface_name'"
+        return 1
+    }
+    
+    # Extract implementation to check if it's valid
+    implementation=$(printf "%s" "$binding_info" | cut -d':' -f1)
+    if [ -z "$implementation" ]; then
+        di_log_error "InvalidBinding" "Empty implementation for interface '$interface_name'"
+        return 1
+    fi
+    
+    # If we get here, validation passed
+    return 0
+}
+
+# Description: Validate dependency chain for an interface
+# Parameters:
+#   $1 - interface name
+# Returns: 0 if valid dependency chain, 1 if invalid
+validate_dependency_chain() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        di_log_error "InvalidBinding" "Interface name required for dependency chain validation"
+        return 1
+    fi
+    
+    interface_name="$1"
+    
+    # Get implementation
+    binding_info=$(service_registry_get "$interface_name") || return 1
+    implementation=$(printf "%s" "$binding_info" | cut -d':' -f1)
+    
+    # Get dependencies for this implementation
+    dependencies=$(get_service_dependencies "$implementation") || {
+        # If no dependencies, chain is valid
+        return 0
+    }
+    
+    # Validate each dependency in the chain
+    for dep_interface in $dependencies; do
+        # Check if dependency is registered
+        if ! container_has "$dep_interface"; then
+            di_log_error "ServiceNotFound" "Dependency '$dep_interface' required by '$interface_name' is not registered"
+            return 1
+        fi
+        
+        # Recursively validate the dependency chain
+        if ! validate_dependency_chain "$dep_interface"; then
+            return 1  # Error already logged by the recursive call
+        fi
+    done
+    
+    return 0  # All dependencies are valid
+}
+
+# Description: Check if container is in a valid state
+# Parameters: None
+# Returns: 0 if valid state, 1 if invalid state
+validate_container_state() {
+    # Check required directories exist
+    if [ -z "$DI_REGISTRY_DIR" ] || [ -z "$DI_INSTANCES_DIR" ] || [ -z "$DI_SCOPES_DIR" ]; then
+        di_log_error "InvalidBinding" "Container not properly initialized - missing required directories"
+        return 1
+    fi
+    
+    # Check directories are accessible
+    if [ ! -d "$DI_REGISTRY_DIR" ] || [ ! -d "$DI_INSTANCES_DIR" ] || [ ! -d "$DI_SCOPES_DIR" ]; then
+        di_log_error "InvalidBinding" "Container directories not accessible"
+        return 1
+    fi
+    
+    return 0
+}

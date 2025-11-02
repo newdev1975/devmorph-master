@@ -69,6 +69,11 @@ container_register() {
     implementation="$2"
     lifetime="${3:-transient}"  # Default to transient if not specified
     
+    # Validate the binding before registering
+    if ! validate_binding "$interface_name" "$implementation" "$lifetime"; then
+        return 1
+    fi
+    
     # Validate lifetime parameter
     case "$lifetime" in
         "singleton"|"transient"|"scoped")
@@ -79,6 +84,10 @@ container_register() {
             return 1
             ;;
     esac
+    
+    # Check for potential circular dependencies if we're adding dependencies
+    # This would be done by checking the service's dependency file
+    # For now, we will add the binding and assume validation is done elsewhere
     
     # Store the binding in the registry
     binding_file="$DI_REGISTRY_DIR/$interface_name"
