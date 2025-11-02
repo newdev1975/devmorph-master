@@ -1,0 +1,11 @@
+// Application Service interface concept
+interface ApplicationService {
+    // Execute the service operation
+    execute(parameters) -> ServiceResult
+    
+    // Validate input parameters
+    validate(parameters) -> ValidationResult
+    
+    // Get service metadata
+    getMetadata() -> object
+}

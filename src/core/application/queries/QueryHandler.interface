@@ -1,0 +1,11 @@
+// Query Handler interface concept
+interface QueryHandler {
+    // Handle the query execution
+    handle(query) -> QueryResult
+    
+    // Validate the query before handling
+    validate(query) -> ValidationResult
+    
+    // Check if this handler can handle the query
+    canHandle(query) -> boolean
+}
