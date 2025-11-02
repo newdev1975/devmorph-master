@@ -1,0 +1,127 @@
+#!/bin/sh
+# Implementation: BashFileOperations
+# Description: Bash-specific file operations implementation
+
+# Import shell utilities
+if [ -f "$(dirname "$0")/../../shell_utils.sh" ]; then
+    . "$(dirname "$0")/../../shell_utils.sh"
+elif [ -f "./shell_utils.sh" ]; then
+    . "./shell_utils.sh"
+else
+    echo "ERROR: shell_utils.sh not found" >&2
+    exit 1
+fi
+
+# Description: Create a directory using Bash-specific features
+# Parameters:
+#   $1 - Directory path to create
+# Returns:
+#   0 - Directory created successfully
+#   1 - Directory creation failed
+bash_mkdir() {
+    if [ -z "$1" ]; then
+        log_error "bash_mkdir: No directory path provided"
+        return 1
+    fi
+
+    if mkdir -p "$1" 2>/dev/null; then
+        return 0
+    else
+        log_error "bash_mkdir: Failed to create directory: $1"
+        return 1
+    fi
+}
+
+# Description: Remove a file or directory using Bash-specific features
+# Parameters:
+#   $1 - Path to remove
+# Returns:
+#   0 - Removal successful
+#   1 - Removal failed
+bash_rm() {
+    if [ -z "$1" ]; then
+        log_error "bash_rm: No path provided"
+        return 1
+    fi
+
+    if [ -d "$1" ] && [ ! -L "$1" ]; then
+        # It's a directory, remove recursively
+        if rm -rf "$1" 2>/dev/null; then
+            return 0
+        else
+            log_error "bash_rm: Failed to remove directory: $1"
+            return 1
+        fi
+    else
+        # It's a file or symlink
+        if rm -f "$1" 2>/dev/null; then
+            return 0
+        else
+            log_error "bash_rm: Failed to remove file: $1"
+            return 1
+        fi
+    fi
+}
+
+# Description: Copy a file or directory using Bash-specific features
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Copy successful
+#   1 - Copy failed
+bash_cp() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "bash_cp: Source and destination paths required"
+        return 1
+    fi
+
+    if [ ! -e "$1" ]; then
+        log_error "bash_cp: Source does not exist: $1"
+        return 1
+    fi
+
+    if [ -d "$1" ]; then
+        # Copy directory
+        if cp -r "$1" "$2" 2>/dev/null; then
+            return 0
+        else
+            log_error "bash_cp: Failed to copy directory from $1 to $2"
+            return 1
+        fi
+    else
+        # Copy file
+        if cp "$1" "$2" 2>/dev/null; then
+            return 0
+        else
+            log_error "bash_cp: Failed to copy file from $1 to $2"
+            return 1
+        fi
+    fi
+}
+
+# Description: Move a file or directory using Bash-specific features
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Move successful
+#   1 - Move failed
+bash_mv() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "bash_mv: Source and destination paths required"
+        return 1
+    fi
+
+    if [ ! -e "$1" ]; then
+        log_error "bash_mv: Source does not exist: $1"
+        return 1
+    fi
+
+    if mv "$1" "$2" 2>/dev/null; then
+        return 0
+    else
+        log_error "bash_mv: Failed to move from $1 to $2"
+        return 1
+    fi
+}
