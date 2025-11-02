@@ -1,0 +1,14 @@
+#!/bin/sh
+# Interface: DashAdapter
+# Description: Dash shell adapter interface
+
+# Interface definition for Dash shell adapter
+# This defines the contract for Dash-specific shell operations
+
+# Interface: DashAdapter
+# Extends: ShellAdapter
+# Methods:
+#   get_name(): string
+#   is_compatible(): boolean
+#   get_capabilities(): array
+#   execute_dash_command(command: string): ExecutionResult

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Interface: POSIXAdapter
+# Description: POSIX shell adapter interface
+
+# Interface definition for POSIX shell adapter
+# This defines the contract for POSIX-compliant shell operations
+
+# Interface: POSIXAdapter
+# Extends: ShellAdapter
+# Methods:
+#   get_name(): string
+#   is_compatible(): boolean
+#   get_capabilities(): array
+#   execute_posix_command(command: string): ExecutionResult

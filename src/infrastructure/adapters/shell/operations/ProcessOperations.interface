@@ -1,0 +1,15 @@
+#!/bin/sh
+# Interface: ProcessOperations
+# Description: Process operations abstraction interface
+
+# Interface definition for process operations
+# This defines the contract for all process-related operations
+
+# Interface: ProcessOperations
+# Methods:
+#   execute(command: string): ExecutionResult
+#   get_pid(): number
+#   kill_process(pid: number): boolean
+#   is_process_running(pid: number): boolean
+#   wait_for_process(pid: number, timeout: number): boolean
+#   background_execute(command: string): number
