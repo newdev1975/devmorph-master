@@ -103,13 +103,13 @@ validate_binding() {
     lifetime="${3:-transient}"
     
     # Validate interface name format
-    if ! printf "%s" "$interface_name" | grep -E '^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*[a-zA-Z0-9_-]$|^[a-zA-Z0-9_-]+$' >/dev/null 2>&1; then
+    if ! printf "%s" "$interface_name" | grep -E '^[a-zA-Z0-9_][a-zA-Z0-9_.-]*[a-zA-Z0-9_]$|^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$|^[a-zA-Z0-9_]+$' >/dev/null 2>&1; then
         di_log_error "InvalidBinding" "Invalid interface name format: $interface_name"
         return 1
     fi
     
-    # Validate implementation format
-    if ! printf "%s" "$implementation" | grep -E '^[a-zA-Z0-9_.\-/][a-zA-Z0-9_.\-/]*$' >/dev/null 2>&1; then
+    # Validate implementation format - dash at end of character class to avoid range interpretation
+    if ! printf "%s" "$implementation" | grep -E '^[a-zA-Z0-9_./-][a-zA-Z0-9_./-]*$' >/dev/null 2>&1; then
         di_log_error "InvalidBinding" "Invalid implementation format: $implementation"
         return 1
     fi

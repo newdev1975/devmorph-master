@@ -6,6 +6,20 @@
 # Parameters: None
 # Returns: 0 on success, 1 on failure
 service_registry_init() {
+    # Load shell utilities if not already loaded
+    if ! command -v log_error >/dev/null 2>&1; then
+        if [ -f "$(dirname "$(dirname "$0")")/adapters/shell/shell_utils.sh" ]; then
+            . "$(dirname "$(dirname "$0")")/adapters/shell/shell_utils.sh"
+        elif [ -f "$(dirname "$0")/../adapters/shell/shell_utils.sh" ]; then
+            . "$(dirname "$0")/../adapters/shell/shell_utils.sh"
+        elif [ -f "./shell_utils.sh" ]; then
+            . "./shell_utils.sh"
+        else
+            echo "ERROR: shell_utils.sh not found" >&2
+            return 1
+        fi
+    fi
+    
     # Check if required variables are set (from container initialization)
     if [ -z "$DI_REGISTRY_DIR" ]; then
         log_error "service_registry_init: DI_REGISTRY_DIR not set, container not initialized"
