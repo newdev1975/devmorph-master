@@ -1,0 +1,70 @@
+#!/bin/sh
+# Implementation: DashAdapter
+# Description: Dash-specific shell adapter implementation
+
+# Description: Get the name of this adapter
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes "Dash"
+dash_adapter_get_name() {
+    echo "Dash"
+    return 0
+}
+
+# Description: Check if this adapter is compatible with the current environment
+# Parameters: None
+# Returns:
+#   0 - Compatible
+#   1 - Not compatible
+dash_adapter_is_compatible() {
+    # Check if we're running in Dash or if Dash is available
+    if [ -n "${DASH_VERSION}" ]; then
+        return 0
+    elif command -v dash >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Get the capabilities of this adapter
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes capabilities as space-separated list
+dash_adapter_get_capabilities() {
+    capabilities="basic_posix lightweight_fast"
+    echo "$capabilities"
+    return 0
+}
+
+# Description: Execute a dash-specific command
+# Parameters:
+#   $1 - Command to execute
+# Returns:
+#   0 - Command executed successfully
+#   1 - Command execution failed
+dash_adapter_execute_command() {
+    if [ -z "$1" ]; then
+        echo "ERROR: dash_adapter_execute_command: No command provided" >&2
+        return 1
+    fi
+
+    # If we're already in dash, execute directly
+    if [ -n "${DASH_VERSION}" ]; then
+        eval "$1"
+        return $?
+    else
+        # Use the dash command if available
+        if command -v dash >/dev/null 2>&1; then
+            dash -c "$1" 2>/dev/null
+            return $?
+        else
+            echo "ERROR: dash_adapter_execute_command: Dash not available" >&2
+            return 1
+        fi
+    fi
+}
