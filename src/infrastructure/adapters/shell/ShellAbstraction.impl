@@ -1,0 +1,185 @@
+#!/bin/sh
+# Implementation: ShellAbstraction
+# Description: Main shell abstraction implementation
+
+# Import shell utilities
+if [ -f "$(dirname "$0")/shell_utils.sh" ]; then
+    . "$(dirname "$0")/shell_utils.sh"
+elif [ -f "./shell_utils.sh" ]; then
+    . "./shell_utils.sh"
+else
+    echo "ERROR: shell_utils.sh not found" >&2
+    exit 1
+fi
+
+# Import factory
+if [ -f "$(dirname "$0")/ShellFactory.impl" ]; then
+    . "$(dirname "$0")/ShellFactory.impl"
+fi
+
+# Import operation implementations
+if [ -f "$(dirname "$0")/implementations/posix/POSIXFileOperations.impl" ]; then
+    . "$(dirname "$0")/implementations/posix/POSIXFileOperations.impl"
+fi
+
+if [ -f "$(dirname "$0")/implementations/posix/POSIXStringOperations.impl" ]; then
+    . "$(dirname "$0")/implementations/posix/POSIXStringOperations.impl"
+fi
+
+if [ -f "$(dirname "$0")/implementations/posix/POSIXProcessOperations.impl" ]; then
+    . "$(dirname "$0")/implementations/posix/POSIXProcessOperations.impl"
+fi
+
+if [ -f "$(dirname "$0")/implementations/posix/POSIXSystemOperations.impl" ]; then
+    . "$(dirname "$0")/implementations/posix/POSIXSystemOperations.impl"
+fi
+
+# Description: Create a directory using appropriate shell operations
+# Parameters:
+#   $1 - Directory path to create
+# Returns:
+#   0 - Directory created successfully
+#   1 - Directory creation failed
+shell_abstraction_mkdir() {
+    posix_mkdir "$1"
+    return $?
+}
+
+# Description: Remove a file or directory using appropriate shell operations
+# Parameters:
+#   $1 - Path to remove
+# Returns:
+#   0 - Removal successful
+#   1 - Removal failed
+shell_abstraction_rm() {
+    posix_rm "$1"
+    return $?
+}
+
+# Description: Copy a file or directory using appropriate shell operations
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Copy successful
+#   1 - Copy failed
+shell_abstraction_cp() {
+    posix_cp "$1" "$2"
+    return $?
+}
+
+# Description: Move a file or directory using appropriate shell operations
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Move successful
+#   1 - Move failed
+shell_abstraction_mv() {
+    posix_mv "$1" "$2"
+    return $?
+}
+
+# Description: Trim a string using appropriate string operations
+# Parameters:
+#   $1 - String to trim
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Trimmed string
+shell_abstraction_trim() {
+    posix_trim "$1"
+    return $?
+}
+
+# Description: Check if a string contains another string
+# Parameters:
+#   $1 - Haystack string
+#   $2 - Needle string
+# Returns:
+#   0 - Contains
+#   1 - Does not contain
+shell_abstraction_contains() {
+    posix_contains "$1" "$2"
+    return $?
+}
+
+# Description: Replace occurrences of a substring
+# Parameters:
+#   $1 - Original string
+#   $2 - Search string
+#   $3 - Replacement string
+# Returns:
+#   0 - Replacement successful
+# Output:
+#   String with replacements made
+shell_abstraction_replace() {
+    posix_replace "$1" "$2" "$3"
+    return $?
+}
+
+# Description: Execute a command
+# Parameters:
+#   $@ - Command and arguments
+# Returns:
+#   0 - Command executed successfully
+#   Non-zero - Command execution failed with exit code
+shell_abstraction_execute() {
+    posix_execute "$@"
+    return $?
+}
+
+# Description: Get the current process ID
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Current process ID
+shell_abstraction_get_pid() {
+    posix_get_pid
+    return $?
+}
+
+# Description: Kill a process
+# Parameters:
+#   $1 - Process ID to kill
+# Returns:
+#   0 - Process killed successfully
+#   1 - Failed to kill process
+shell_abstraction_kill_process() {
+    posix_kill_process "$1"
+    return $?
+}
+
+# Description: Get the OS type
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   OS type (linux, darwin, windows, freebsd, unknown)
+shell_abstraction_get_os_type() {
+    posix_get_os_type
+    return $?
+}
+
+# Description: Get the shell type
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Shell type (bash, zsh, dash, posix, unknown)
+shell_abstraction_get_shell_type() {
+    posix_get_shell_type
+    return $?
+}
+
+# Description: Check if a command exists
+# Parameters:
+#   $1 - Command name to check
+# Returns:
+#   0 - Command exists
+#   1 - Command does not exist
+shell_abstraction_check_command() {
+    posix_check_command "$1"
+    return $?
+}
