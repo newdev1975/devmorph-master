@@ -1,0 +1,17 @@
+// Kernel concept - language agnostic
+interface Kernel {
+    // Initialize the kernel and all registered components
+    bootstrap() -> boolean
+    
+    // Start the application
+    run() -> void
+    
+    // Clean shutdown of the application
+    shutdown() -> void
+    
+    // Get the dependency injection container
+    getContainer() -> Container
+    
+    // Get the event dispatcher
+    getEventDispatcher() -> EventDispatcher
+}

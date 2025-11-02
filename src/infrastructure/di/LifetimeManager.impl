@@ -1,0 +1,236 @@
+#!/bin/sh
+# Implementation: LifetimeManager.impl
+# Description: Lifetime management system for the DI container
+
+# Description: Get an instance based on lifetime configuration
+# Parameters:
+#   $1 - implementation identifier
+#   $2 - lifetime type (singleton|transient|scoped)
+# Returns: 0 on success, 1 on failure
+# Output: service instance
+lifetime_manager_get_instance() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "lifetime_manager_get_instance: implementation and lifetime required"
+        return 1
+    fi
+    
+    implementation="$1"
+    lifetime="$2"
+    
+    # Validate lifetime parameter
+    case "$lifetime" in
+        "singleton"|"transient"|"scoped")
+            # Valid lifetime type
+            ;;
+        *)
+            log_error "lifetime_manager_get_instance: invalid lifetime '$lifetime', must be singleton, transient, or scoped"
+            return 1
+            ;;
+    esac
+    
+    case "$lifetime" in
+        "singleton")
+            lifetime_manager_get_singleton_instance "$implementation" || return 1
+            ;;
+        "scoped")
+            lifetime_manager_get_scoped_instance "$implementation" || return 1
+            ;;
+        "transient")
+            lifetime_manager_get_transient_instance "$implementation" || return 1
+            ;;
+        *)
+            # Default to transient
+            lifetime_manager_get_transient_instance "$implementation" || return 1
+            ;;
+    esac
+}
+
+# Description: Get a singleton instance (one instance per container)
+# Parameters:
+#   $1 - implementation identifier
+# Returns: 0 on success, 1 on failure
+# Output: singleton service instance
+lifetime_manager_get_singleton_instance() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "lifetime_manager_get_singleton_instance: implementation required"
+        return 1
+    fi
+    
+    implementation="$1"
+    
+    # Create a unique key for this singleton based on implementation
+    instance_key=$(printf "%s" "$implementation" | tr '/' '_' | tr '.' '_')
+    instance_file="$DI_INSTANCES_DIR/$instance_key"
+    
+    # Check if instance already exists
+    if [ -f "$instance_file" ]; then
+        # Return existing singleton instance
+        cat "$instance_file"
+        return 0
+    else
+        # Create new instance and store it
+        # Note: We need to handle dependencies when creating the instance
+        # For now, we'll create the instance without dependencies
+        new_instance=$(create_service_instance_with_deps "$implementation") || return 1
+        
+        # Store the instance for future use
+        echo "$new_instance" > "$instance_file" || return 1
+        echo "$new_instance"
+        return 0
+    fi
+}
+
+# Description: Get a scoped instance (one instance per scope)
+# Parameters:
+#   $1 - implementation identifier
+# Returns: 0 on success, 1 on failure
+# Output: scoped service instance
+lifetime_manager_get_scoped_instance() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "lifetime_manager_get_scoped_instance: implementation required"
+        return 1
+    fi
+    
+    implementation="$1"
+    
+    # Get current scope (default to 'default' if not set)
+    scope_id="${DI_ACTIVE_SCOPE:-default}"
+    
+    # Create a unique key for this scoped instance
+    instance_key=$(printf "%s" "$implementation" | tr '/' '_' | tr '.' '_')
+    scoped_instance_file="$DI_SCOPES_DIR/${scope_id}_${instance_key}"
+    
+    # Check if instance already exists in this scope
+    if [ -f "$scoped_instance_file" ]; then
+        # Return existing scoped instance
+        cat "$scoped_instance_file"
+        return 0
+    else
+        # Create new instance and store it in scope
+        new_instance=$(create_service_instance_with_deps "$implementation") || return 1
+        
+        # Store the instance for this scope
+        echo "$new_instance" > "$scoped_instance_file" || return 1
+        echo "$new_instance"
+        return 0
+    fi
+}
+
+# Description: Get a transient instance (new instance each time)
+# Parameters:
+#   $1 - implementation identifier
+# Returns: 0 on success, 1 on failure
+# Output: new service instance
+lifetime_manager_get_transient_instance() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "lifetime_manager_get_transient_instance: implementation required"
+        return 1
+    fi
+    
+    implementation="$1"
+    
+    # Always create a new instance for transient lifetime
+    create_service_instance_with_deps "$implementation" || return 1
+}
+
+# Description: Create service instance with its dependencies
+# Parameters:
+#   $1 - implementation identifier
+# Returns: 0 on success, 1 on failure
+# Output: service instance with dependencies resolved
+create_service_instance_with_deps() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "create_service_instance_with_deps: implementation required"
+        return 1
+    fi
+    
+    implementation="$1"
+    
+    # Get dependencies for this implementation
+    dependencies=$(get_service_dependencies "$implementation") || {
+        # If no dependencies found, create instance without dependencies
+        create_service_instance "$implementation"
+        return $?
+    }
+    
+    # Resolve each dependency
+    resolved_deps=""
+    for dep_interface in $dependencies; do
+        dep_instance=$(service_resolver_resolve "$dep_interface") || return 1
+        resolved_deps="$resolved_deps $dep_instance"
+    done
+    
+    # Create service instance with resolved dependencies
+    create_service_instance "$implementation" $resolved_deps
+}
+
+# Description: Clear all singleton instances
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+lifetime_manager_clear_singletons() {
+    if [ -d "$DI_INSTANCES_DIR" ]; then
+        # Remove all singleton instance files
+        rm -f "$DI_INSTANCES_DIR"/*
+    fi
+    
+    return 0
+}
+
+# Description: Clear all scoped instances
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+lifetime_manager_clear_scoped() {
+    if [ -d "$DI_SCOPES_DIR" ]; then
+        # Remove all scoped instance files
+        rm -f "$DI_SCOPES_DIR"/*
+    fi
+    
+    return 0
+}
+
+# Description: Clear instances for a specific scope
+# Parameters:
+#   $1 - scope identifier
+# Returns: 0 on success, 1 on failure
+lifetime_manager_clear_scope() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "lifetime_manager_clear_scope: scope identifier required"
+        return 1
+    fi
+    
+    scope_id="$1"
+    
+    if [ -d "$DI_SCOPES_DIR" ]; then
+        # Remove all instance files for this scope
+        # Use a pattern that matches files starting with the scope_id
+        for scope_file in "$DI_SCOPES_DIR"/${scope_id}_*; do
+            if [ -f "$scope_file" ]; then
+                rm "$scope_file" || return 1
+            fi
+        done
+    fi
+    
+    return 0
+}
+
+# Description: Get statistics about lifetime management
+# Parameters: None
+# Returns: 0 on success
+# Output: statistics about singleton and scoped instances
+lifetime_manager_get_stats() {
+    singleton_count=0
+    scoped_count=0
+    
+    if [ -d "$DI_INSTANCES_DIR" ]; then
+        singleton_count=$(find "$DI_INSTANCES_DIR" -type f 2>/dev/null | wc -l)
+    fi
+    
+    if [ -d "$DI_SCOPES_DIR" ]; then
+        scoped_count=$(find "$DI_SCOPES_DIR" -type f 2>/dev/null | wc -l)
+    fi
+    
+    echo "Singleton instances: $singleton_count"
+    echo "Scoped instances: $scoped_count"
+    
+    return 0
+}

@@ -1,0 +1,17 @@
+// Container Implementation interface concept
+interface ContainerImplementation extends Container {
+    // Load container configuration from file or object
+    loadConfiguration(config) -> void
+    
+    // Get all registered interface names
+    getRegisteredInterfaces() -> array<string>
+    
+    // Get registration information for an interface
+    getRegistration(interface) -> RegistrationInfo
+    
+    // Reset the container to initial state
+    reset() -> void
+    
+    // Get container statistics/metadata
+    getMetadata() -> object
+}

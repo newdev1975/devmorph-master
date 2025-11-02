@@ -1,0 +1,273 @@
+#!/bin/sh
+# Implementation: ShellFactory
+# Description: Shell factory implementation for creating appropriate shell adapters
+
+# Description: Create the appropriate shell adapter based on the current environment
+# Parameters: None
+# Returns:
+#   0 - Adapter created successfully
+#   1 - Failed to create adapter
+shell_factory_create_adapter() {
+    # We assume shell_detector_detect_shell is available from other context
+    if command -v shell_detector_detect_shell >/dev/null 2>&1; then
+        shell_type=$(shell_detector_detect_shell)
+    else
+        # Fallback to basic detection
+        if [ -n "${BASH_VERSION}" ]; then
+            shell_type="bash"
+        elif [ -n "${ZSH_VERSION}" ]; then
+            shell_type="zsh"
+        elif [ -n "${DASH_VERSION}" ]; then
+            shell_type="dash"
+        else
+            shell_type="posix"
+        fi
+    fi
+    
+    case "$shell_type" in
+        "bash")
+            # For now, return the appropriate functions for bash
+            # In a real implementation, this would return an object or similar
+            echo "bash_adapter"
+            return 0
+            ;;
+        "zsh")
+            echo "zsh_adapter"
+            return 0
+            ;;
+        "dash")
+            echo "dash_adapter"
+            return 0
+            ;;
+        "posix"|"unknown")
+            echo "posix_adapter"
+            return 0
+            ;;
+        *)
+            echo "posix_adapter"  # Default to POSIX as fallback
+            return 0
+            ;;
+    esac
+}
+
+# Description: Create file operations instance
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes the type of file operations to use
+shell_factory_create_file_operations() {
+    # We assume shell_detector_detect_shell is available from other context
+    if command -v shell_detector_detect_shell >/dev/null 2>&1; then
+        shell_type=$(shell_detector_detect_shell)
+    else
+        # Fallback to basic detection
+        if [ -n "${BASH_VERSION}" ]; then
+            shell_type="bash"
+        elif [ -n "${ZSH_VERSION}" ]; then
+            shell_type="zsh"
+        elif [ -n "${DASH_VERSION}" ]; then
+            shell_type="dash"
+        else
+            shell_type="posix"
+        fi
+    fi
+    
+    case "$shell_type" in
+        "bash")
+            echo "bash_file_operations"
+            return 0
+            ;;
+        "zsh")
+            echo "zsh_file_operations"
+            return 0
+            ;;
+        "dash")
+            echo "dash_file_operations"
+            return 0
+            ;;
+        *)
+            echo "posix_file_operations"
+            return 0
+            ;;
+    esac
+}
+
+# Description: Create string operations instance
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes the type of string operations to use
+shell_factory_create_string_operations() {
+    # We assume shell_detector_detect_shell is available from other context
+    if command -v shell_detector_detect_shell >/dev/null 2>&1; then
+        shell_type=$(shell_detector_detect_shell)
+    else
+        # Fallback to basic detection
+        if [ -n "${BASH_VERSION}" ]; then
+            shell_type="bash"
+        elif [ -n "${ZSH_VERSION}" ]; then
+            shell_type="zsh"
+        elif [ -n "${DASH_VERSION}" ]; then
+            shell_type="dash"
+        else
+            shell_type="posix"
+        fi
+    fi
+    
+    case "$shell_type" in
+        "bash")
+            echo "bash_string_operations"
+            return 0
+            ;;
+        "zsh")
+            echo "zsh_string_operations"
+            return 0
+            ;;
+        "dash")
+            echo "dash_string_operations"
+            return 0
+            ;;
+        *)
+            echo "posix_string_operations"
+            return 0
+            ;;
+    esac
+}
+
+# Description: Create process operations instance
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes the type of process operations to use
+shell_factory_create_process_operations() {
+    # We assume shell_detector_detect_shell is available from other context
+    if command -v shell_detector_detect_shell >/dev/null 2>&1; then
+        shell_type=$(shell_detector_detect_shell)
+    else
+        # Fallback to basic detection
+        if [ -n "${BASH_VERSION}" ]; then
+            shell_type="bash"
+        elif [ -n "${ZSH_VERSION}" ]; then
+            shell_type="zsh"
+        elif [ -n "${DASH_VERSION}" ]; then
+            shell_type="dash"
+        else
+            shell_type="posix"
+        fi
+    fi
+    
+    case "$shell_type" in
+        "bash")
+            echo "bash_process_operations"
+            return 0
+            ;;
+        "zsh")
+            echo "zsh_process_operations"
+            return 0
+            ;;
+        "dash")
+            echo "dash_process_operations"
+            return 0
+            ;;
+        *)
+            echo "posix_process_operations"
+            return 0
+            ;;
+    esac
+}
+
+# Description: Create system operations instance
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes the type of system operations to use
+shell_factory_create_system_operations() {
+    # We assume shell_detector_detect_shell is available from other context
+    if command -v shell_detector_detect_shell >/dev/null 2>&1; then
+        shell_type=$(shell_detector_detect_shell)
+    else
+        # Fallback to basic detection
+        if [ -n "${BASH_VERSION}" ]; then
+            shell_type="bash"
+        elif [ -n "${ZSH_VERSION}" ]; then
+            shell_type="zsh"
+        elif [ -n "${DASH_VERSION}" ]; then
+            shell_type="dash"
+        else
+            shell_type="posix"
+        fi
+    fi
+    
+    case "$shell_type" in
+        "bash")
+            echo "bash_system_operations"
+            return 0
+            ;;
+        "zsh")
+            echo "zsh_system_operations"
+            return 0
+            ;;
+        "dash")
+            echo "dash_system_operations"
+            return 0
+            ;;
+        *)
+            echo "posix_system_operations"
+            return 0
+            ;;
+    esac
+}
+
+# Description: Create shell detector instance
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes the type of shell detector to use
+shell_factory_create_shell_detector() {
+    # We assume shell_detector_detect_shell is available from other context
+    if command -v shell_detector_detect_shell >/dev/null 2>&1; then
+        shell_type=$(shell_detector_detect_shell)
+    else
+        # Fallback to basic detection
+        if [ -n "${BASH_VERSION}" ]; then
+            shell_type="bash"
+        elif [ -n "${ZSH_VERSION}" ]; then
+            shell_type="zsh"
+        elif [ -n "${DASH_VERSION}" ]; then
+            shell_type="dash"
+        else
+            shell_type="posix"
+        fi
+    fi
+    
+    case "$shell_type" in
+        "bash")
+            echo "bash_shell_detector"
+            return 0
+            ;;
+        "zsh")
+            echo "zsh_shell_detector"
+            return 0
+            ;;
+        *)
+            echo "posix_shell_detector"
+            return 0
+            ;;
+    esac
+}
+
+# Description: Create feature detector instance
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes the type of feature detector to use
+shell_factory_create_feature_detector() {
+    echo "posix_feature_detector"
+    return 0
+}

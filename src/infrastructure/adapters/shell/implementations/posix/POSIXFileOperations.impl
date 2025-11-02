@@ -1,0 +1,262 @@
+#!/bin/sh
+# Implementation: POSIXFileOperations
+# Description: POSIX-compliant file operations implementation
+
+# Description: Create a directory
+# Parameters:
+#   $1 - Directory path to create
+# Returns:
+#   0 - Directory created successfully
+#   1 - Directory creation failed
+posix_mkdir() {
+    if [ -z "$1" ]; then
+        echo "ERROR: posix_mkdir: No directory path provided" >&2
+        return 1
+    fi
+
+    if mkdir -p "$1" 2>/dev/null; then
+        return 0
+    else
+        echo "ERROR: posix_mkdir: Failed to create directory: $1" >&2
+        return 1
+    fi
+}
+
+# Description: Remove a file or directory
+# Parameters:
+#   $1 - Path to remove
+# Returns:
+#   0 - Removal successful
+#   1 - Removal failed
+posix_rm() {
+    if [ -z "$1" ]; then
+        echo "ERROR: posix_rm: No path provided" >&2
+        return 1
+    fi
+
+    if [ -d "$1" ] && [ ! -L "$1" ]; then
+        # It's a directory, remove recursively
+        if rm -rf "$1" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: posix_rm: Failed to remove directory: $1" >&2
+            return 1
+        fi
+    else
+        # It's a file or symlink
+        if rm -f "$1" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: posix_rm: Failed to remove file: $1" >&2
+            return 1
+        fi
+    fi
+}
+
+# Description: Copy a file or directory
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Copy successful
+#   1 - Copy failed
+posix_cp() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: posix_cp: Source and destination paths required" >&2
+        return 1
+    fi
+
+    if [ ! -e "$1" ]; then
+        echo "ERROR: posix_cp: Source does not exist: $1" >&2
+        return 1
+    fi
+
+    if [ -d "$1" ]; then
+        # Copy directory
+        if cp -r "$1" "$2" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: posix_cp: Failed to copy directory from $1 to $2" >&2
+            return 1
+        fi
+    else
+        # Copy file
+        if cp "$1" "$2" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: posix_cp: Failed to copy file from $1 to $2" >&2
+            return 1
+        fi
+    fi
+}
+
+# Description: Move a file or directory
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Move successful
+#   1 - Move failed
+posix_mv() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: posix_mv: Source and destination paths required" >&2
+        return 1
+    fi
+
+    if [ ! -e "$1" ]; then
+        echo "ERROR: posix_mv: Source does not exist: $1" >&2
+        return 1
+    fi
+
+    if mv "$1" "$2" 2>/dev/null; then
+        return 0
+    else
+        echo "ERROR: posix_mv: Failed to move from $1 to $2" >&2
+        return 1
+    fi
+}
+
+# Description: Check if a path exists
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path exists
+#   1 - Path does not exist
+posix_exists() {
+    if [ -z "$1" ]; then
+        echo "ERROR: posix_exists: No path provided" >&2
+        return 1
+    fi
+
+    if [ -e "$1" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if a path is a directory
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path is a directory
+#   1 - Path is not a directory
+posix_is_directory() {
+    if [ -z "$1" ]; then
+        echo "ERROR: posix_is_directory: No path provided" >&2
+        return 1
+    fi
+
+    if [ -d "$1" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check if a path is a file
+# Parameters:
+#   $1 - Path to check
+# Returns:
+#   0 - Path is a file
+#   1 - Path is not a file
+posix_is_file() {
+    if [ -z "$1" ]; then
+        echo "ERROR: posix_is_file: No path provided" >&2
+        return 1
+    fi
+
+    if [ -f "$1" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Read content from a file
+# Parameters:
+#   $1 - File path to read
+# Returns:
+#   0 - Read successful
+#   1 - Read failed
+# Output:
+#   File content if successful
+posix_read_file() {
+    if [ -z "$1" ]; then
+        echo "ERROR: posix_read_file: No file path provided" >&2
+        return 1
+    fi
+
+    if [ ! -f "$1" ]; then
+        echo "ERROR: posix_read_file: File does not exist or is not a regular file: $1" >&2
+        return 1
+    fi
+
+    if [ ! -r "$1" ]; then
+        echo "ERROR: posix_read_file: File is not readable: $1" >&2
+        return 1
+    fi
+
+    cat "$1"
+    return 0
+}
+
+# Description: Write content to a file (overwrites existing content)
+# Parameters:
+#   $1 - File path to write
+#   $2 - Content to write
+# Returns:
+#   0 - Write successful
+#   1 - Write failed
+posix_write_file() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: posix_write_file: File path and content required" >&2
+        return 1
+    fi
+
+    # Create directory if it doesn't exist
+    dirname=$(dirname "$1")
+    if [ ! -d "$dirname" ]; then
+        if ! mkdir -p "$dirname" 2>/dev/null; then
+            echo "ERROR: posix_write_file: Failed to create directory: $dirname" >&2
+            return 1
+        fi
+    fi
+
+    if echo "$2" > "$1" 2>/dev/null; then
+        return 0
+    else
+        echo "ERROR: posix_write_file: Failed to write to file: $1" >&2
+        return 1
+    fi
+}
+
+# Description: Append content to a file
+# Parameters:
+#   $1 - File path to append
+#   $2 - Content to append
+# Returns:
+#   0 - Append successful
+#   1 - Append failed
+posix_append_file() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: posix_append_file: File path and content required" >&2
+        return 1
+    fi
+
+    # Create directory if it doesn't exist
+    dirname=$(dirname "$1")
+    if [ ! -d "$dirname" ]; then
+        if ! mkdir -p "$dirname" 2>/dev/null; then
+            echo "ERROR: posix_append_file: Failed to create directory: $dirname" >&2
+            return 1
+        fi
+    fi
+
+    if echo "$2" >> "$1" 2>/dev/null; then
+        return 0
+    else
+        echo "ERROR: posix_append_file: Failed to append to file: $1" >&2
+        return 1
+    fi
+}

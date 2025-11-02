@@ -1,0 +1,11 @@
+// Command Handler interface concept
+interface CommandHandler {
+    // Handle the command execution
+    handle(command) -> CommandResult
+    
+    // Validate the command before handling
+    validate(command) -> ValidationResult
+    
+    // Check if this handler can handle the command
+    canHandle(command) -> boolean
+}

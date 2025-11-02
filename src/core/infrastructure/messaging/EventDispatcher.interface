@@ -1,0 +1,17 @@
+// Event Dispatcher interface concept
+interface EventDispatcher {
+    // Register an event handler for an event type
+    registerHandler(eventType, handler) -> void
+    
+    // Dispatch an event to all registered handlers
+    dispatch(event) -> void
+    
+    // Remove an event handler for an event type
+    removeHandler(eventType, handler) -> void
+    
+    // Get all handlers for an event type
+    getHandlers(eventType) -> array<EventHandler>
+    
+    // Check if there are handlers for an event type
+    hasHandlers(eventType) -> boolean
+}

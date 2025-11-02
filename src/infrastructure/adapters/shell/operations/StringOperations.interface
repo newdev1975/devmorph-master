@@ -1,0 +1,19 @@
+#!/bin/sh
+# Interface: StringOperations
+# Description: String operations abstraction interface
+
+# Interface definition for string operations
+# This defines the contract for all string manipulation operations
+
+# Interface: StringOperations
+# Methods:
+#   trim(str: string): string
+#   contains(haystack: string, needle: string): boolean
+#   replace(str: string, search: string, replace: string): string
+#   starts_with(str: string, prefix: string): boolean
+#   ends_with(str: string, suffix: string): boolean
+#   split(str: string, delimiter: string): array
+#   join(array: array, delimiter: string): string
+#   length(str: string): number
+#   to_upper(str: string): string
+#   to_lower(str: string): string

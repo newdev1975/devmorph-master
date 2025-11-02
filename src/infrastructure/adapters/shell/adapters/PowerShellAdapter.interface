@@ -1,0 +1,14 @@
+#!/bin/sh
+# Interface: PowerShellAdapter
+# Description: PowerShell adapter interface
+
+# Interface definition for PowerShell adapter
+# This defines the contract for PowerShell-specific operations
+
+# Interface: PowerShellAdapter
+# Extends: ShellAdapter
+# Methods:
+#   get_name(): string
+#   is_compatible(): boolean
+#   get_capabilities(): array
+#   execute_powershell_command(command: string): ExecutionResult

@@ -1,0 +1,14 @@
+// Data Transfer Object interface concept
+interface DTO {
+    // Convert DTO to a plain object representation
+    toObject() -> object
+    
+    // Create DTO from object data
+    static fromObject(data) -> DTO
+    
+    // Validate DTO data
+    validate() -> ValidationResult
+    
+    // Get the DTO schema/type information
+    getSchema() -> object
+}

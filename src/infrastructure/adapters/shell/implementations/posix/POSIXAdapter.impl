@@ -1,0 +1,70 @@
+#!/bin/sh
+# Implementation: POSIXAdapter
+# Description: POSIX shell adapter implementation
+
+# Import shell utilities
+if [ -f "$(dirname "$0")/../shell_utils.sh" ]; then
+    . "$(dirname "$0")/../shell_utils.sh"
+elif [ -f "./shell_utils.sh" ]; then
+    . "./shell_utils.sh"
+else
+    echo "ERROR: shell_utils.sh not found" >&2
+    exit 1
+fi
+
+# Import POSIX file operations
+if [ -f "./posix/POSIXFileOperations.impl" ]; then
+    . "./posix/POSIXFileOperations.impl"
+fi
+
+# Description: Get the name of this adapter
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes "POSIX"
+posix_adapter_get_name() {
+    echo "POSIX"
+    return 0
+}
+
+# Description: Check if this adapter is compatible with the current environment
+# Parameters: None
+# Returns:
+#   0 - Compatible
+#   1 - Not compatible
+posix_adapter_is_compatible() {
+    # POSIX is always compatible as it's the baseline
+    return 0
+}
+
+# Description: Get the capabilities of this adapter
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes capabilities as space-separated list
+posix_adapter_get_capabilities() {
+    echo "mkdir rm cp mv exists is_directory is_file read_file write_file append_file"
+    return 0
+}
+
+# Description: Execute a POSIX-compliant command
+# Parameters:
+#   $1 - Command to execute
+# Returns:
+#   0 - Command executed successfully
+#   1 - Command execution failed
+posix_adapter_execute_command() {
+    if [ -z "$1" ]; then
+        log_error "posix_adapter_execute_command: No command provided"
+        return 1
+    fi
+
+    if eval "$1"; then
+        return 0
+    else
+        log_error "posix_adapter_execute_command: Command failed: $1"
+        return 1
+    fi
+}

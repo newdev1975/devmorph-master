@@ -1,0 +1,14 @@
+// Command interface concept
+interface Command {
+    // Get the command name/type
+    getName() -> string
+    
+    // Validate command parameters
+    validate() -> ValidationResult
+    
+    // Get command data
+    getData() -> object
+    
+    // Get command metadata
+    getMetadata() -> object
+}

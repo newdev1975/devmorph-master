@@ -1,0 +1,14 @@
+// Domain Event interface concept
+interface DomainEvent {
+    // Get the unique identifier of the event
+    getId() -> EventId
+    
+    // Get the timestamp of when the event occurred
+    getTimestamp() -> DateTime
+    
+    // Get the name/type of the event
+    getName() -> string
+    
+    // Get event data
+    getData() -> object
+}

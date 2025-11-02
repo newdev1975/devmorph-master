@@ -1,0 +1,22 @@
+#!/bin/sh
+# Interface: ShellAbstraction
+# Description: Main abstraction interface for shell operations
+
+# Interface definition for shell abstraction
+# This defines the contract that all shell adapters must implement
+
+# Interface: ShellAbstraction
+# Methods:
+#   mkdir(path: string): boolean
+#   rm(path: string): boolean
+#   cp(src: string, dest: string): boolean
+#   mv(src: string, dest: string): boolean
+#   trim(str: string): string
+#   contains(haystack: string, needle: string): boolean
+#   replace(str: string, search: string, replace: string): string
+#   execute(command: string): ExecutionResult
+#   get_pid(): number
+#   kill_process(pid: number): boolean
+#   get_os_type(): OSType
+#   get_shell_type(): ShellType
+#   check_command(command: string): boolean

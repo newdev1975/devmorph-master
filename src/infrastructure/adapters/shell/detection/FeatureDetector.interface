@@ -1,0 +1,17 @@
+#!/bin/sh
+# Interface: FeatureDetector
+# Description: Feature detection interface
+
+# Interface definition for feature detection
+# This defines the contract for detecting shell features and capabilities
+
+# Interface: FeatureDetector
+# Methods:
+#   has_arrays(): boolean
+#   has_assoc_arrays(): boolean
+#   has_process_substitution(): boolean
+#   has_named_pipes(): boolean
+#   has_function_declarations(): boolean
+#   has_advanced_conditionals(): boolean
+#   get_available_features(): array
+#   check_feature(feature: string): boolean

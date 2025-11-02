@@ -1,0 +1,391 @@
+#!/bin/sh
+# Implementation: ShellAbstraction
+# Description: Main shell abstraction implementation
+
+# Description: Create a directory using appropriate shell operations
+# Parameters:
+#   $1 - Directory path to create
+# Returns:
+#   0 - Directory created successfully
+#   1 - Directory creation failed
+shell_abstraction_mkdir() {
+    # Ensure posix_mkdir is available from the test context
+    if command -v posix_mkdir >/dev/null 2>&1; then
+        posix_mkdir "$1"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ]; then
+            echo "ERROR: shell_abstraction_mkdir: No directory path provided" >&2
+            return 1
+        fi
+
+        if mkdir -p "$1" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: shell_abstraction_mkdir: Failed to create directory: $1" >&2
+            return 1
+        fi
+    fi
+}
+
+# Description: Remove a file or directory using appropriate shell operations
+# Parameters:
+#   $1 - Path to remove
+# Returns:
+#   0 - Removal successful
+#   1 - Removal failed
+shell_abstraction_rm() {
+    # Ensure posix_rm is available from the test context
+    if command -v posix_rm >/dev/null 2>&1; then
+        posix_rm "$1"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ]; then
+            echo "ERROR: shell_abstraction_rm: No path provided" >&2
+            return 1
+        fi
+
+        if [ -d "$1" ] && [ ! -L "$1" ]; then
+            # It's a directory, remove recursively
+            if rm -rf "$1" 2>/dev/null; then
+                return 0
+            else
+                echo "ERROR: shell_abstraction_rm: Failed to remove directory: $1" >&2
+                return 1
+            fi
+        else
+            # It's a file or symlink
+            if rm -f "$1" 2>/dev/null; then
+                return 0
+            else
+                echo "ERROR: shell_abstraction_rm: Failed to remove file: $1" >&2
+                return 1
+            fi
+        fi
+    fi
+}
+
+# Description: Copy a file or directory using appropriate shell operations
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Copy successful
+#   1 - Copy failed
+shell_abstraction_cp() {
+    # Ensure posix_cp is available from the test context
+    if command -v posix_cp >/dev/null 2>&1; then
+        posix_cp "$1" "$2"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ] || [ -z "$2" ]; then
+            echo "ERROR: shell_abstraction_cp: Source and destination paths required" >&2
+            return 1
+        fi
+
+        if [ ! -e "$1" ]; then
+            echo "ERROR: shell_abstraction_cp: Source does not exist: $1" >&2
+            return 1
+        fi
+
+        if [ -d "$1" ]; then
+            # Copy directory
+            if cp -r "$1" "$2" 2>/dev/null; then
+                return 0
+            else
+                echo "ERROR: shell_abstraction_cp: Failed to copy directory from $1 to $2" >&2
+                return 1
+            fi
+        else
+            # Copy file
+            if cp "$1" "$2" 2>/dev/null; then
+                return 0
+            else
+                echo "ERROR: shell_abstraction_cp: Failed to copy file from $1 to $2" >&2
+                return 1
+            fi
+        fi
+    fi
+}
+
+# Description: Move a file or directory using appropriate shell operations
+# Parameters:
+#   $1 - Source path
+#   $2 - Destination path
+# Returns:
+#   0 - Move successful
+#   1 - Move failed
+shell_abstraction_mv() {
+    # Ensure posix_mv is available from the test context
+    if command -v posix_mv >/dev/null 2>&1; then
+        posix_mv "$1" "$2"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ] || [ -z "$2" ]; then
+            echo "ERROR: shell_abstraction_mv: Source and destination paths required" >&2
+            return 1
+        fi
+
+        if [ ! -e "$1" ]; then
+            echo "ERROR: shell_abstraction_mv: Source does not exist: $1" >&2
+            return 1
+        fi
+
+        if mv "$1" "$2" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: shell_abstraction_mv: Failed to move from $1 to $2" >&2
+            return 1
+        fi
+    fi
+}
+
+# Description: Trim a string using appropriate string operations
+# Parameters:
+#   $1 - String to trim
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Trimmed string
+shell_abstraction_trim() {
+    # Ensure posix_trim is available from the test context
+    if command -v posix_trim >/dev/null 2>&1; then
+        posix_trim "$1"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ]; then
+            echo ""
+            return 0
+        fi
+
+        # Remove leading whitespace
+        str=$(echo "$1" | sed 's/^[[:space:]]*//')
+        # Remove trailing whitespace
+        str=$(echo "$str" | sed 's/[[:space:]]*$//')
+        echo "$str"
+        return 0
+    fi
+}
+
+# Description: Check if a string contains another string
+# Parameters:
+#   $1 - Haystack string
+#   $2 - Needle string
+# Returns:
+#   0 - Contains
+#   1 - Does not contain
+shell_abstraction_contains() {
+    # Ensure posix_contains is available from the test context
+    if command -v posix_contains >/dev/null 2>&1; then
+        posix_contains "$1" "$2"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ] || [ -z "$2" ]; then
+            return 1
+        fi
+
+        case "$1" in
+            *"$2"*)
+                return 0
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    fi
+}
+
+# Description: Replace occurrences of a substring
+# Parameters:
+#   $1 - Original string
+#   $2 - Search string
+#   $3 - Replacement string
+# Returns:
+#   0 - Replacement successful
+# Output:
+#   String with replacements made
+shell_abstraction_replace() {
+    # Ensure posix_replace is available from the test context
+    if command -v posix_replace >/dev/null 2>&1; then
+        posix_replace "$1" "$2" "$3"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ]; then
+            echo ""
+            return 0
+        fi
+
+        if [ -z "$2" ]; then
+            # If search string is empty, return original string unchanged
+            echo "$1"
+            return 0
+        fi
+
+        # Use sed to replace all occurrences
+        result=$(echo "$1" | sed "s/$2/$3/g")
+        echo "$result"
+        return 0
+    fi
+}
+
+# Description: Execute a command
+# Parameters:
+#   $@ - Command and arguments
+# Returns:
+#   0 - Command executed successfully
+#   Non-zero - Command execution failed with exit code
+shell_abstraction_execute() {
+    # Ensure posix_execute is available from the test context
+    if command -v posix_execute >/dev/null 2>&1; then
+        posix_execute "$@"
+        return $?
+    else
+        # Fallback implementation
+        if [ $# -eq 0 ]; then
+            echo "ERROR: shell_abstraction_execute: No command provided" >&2
+            return 1
+        fi
+
+        # Execute the command and capture output and exit code
+        "$@"
+        return $?
+    fi
+}
+
+# Description: Get the current process ID
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Current process ID
+shell_abstraction_get_pid() {
+    # Ensure posix_get_pid is available from the test context
+    if command -v posix_get_pid >/dev/null 2>&1; then
+        posix_get_pid
+        return $?
+    else
+        # Fallback implementation
+        echo "$$"
+        return 0
+    fi
+}
+
+# Description: Kill a process
+# Parameters:
+#   $1 - Process ID to kill
+# Returns:
+#   0 - Process killed successfully
+#   1 - Failed to kill process
+shell_abstraction_kill_process() {
+    # Ensure posix_kill_process is available from the test context
+    if command -v posix_kill_process >/dev/null 2>&1; then
+        posix_kill_process "$1"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ]; then
+            echo "ERROR: shell_abstraction_kill_process: No PID provided" >&2
+            return 1
+        fi
+
+        # Check if the PID is a number
+        if ! echo "$1" | grep -qE '^[0-9]+$'; then
+            echo "ERROR: shell_abstraction_kill_process: Invalid PID: $1" >&2
+            return 1
+        fi
+
+        # Check if the process exists before attempting to kill it
+        if kill -0 "$1" 2>/dev/null; then
+            # Process exists, kill it
+            if kill "$1" 2>/dev/null; then
+                return 0
+            else
+                echo "ERROR: shell_abstraction_kill_process: Failed to kill process $1" >&2
+                return 1
+            fi
+        else
+            # Process doesn't exist
+            echo "ERROR: shell_abstraction_kill_process: Process $1 does not exist" >&2
+            return 1
+        fi
+    fi
+}
+
+# Description: Get the OS type
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   OS type (linux, darwin, windows, freebsd, unknown)
+shell_abstraction_get_os_type() {
+    # Ensure posix_get_os_type is available from the test context
+    if command -v posix_get_os_type >/dev/null 2>&1; then
+        posix_get_os_type
+        return $?
+    else
+        # Fallback implementation
+        case "$(uname -s)" in
+            Linux*)     echo "linux" ;;
+            Darwin*)    echo "darwin" ;;
+            CYGWIN*|MINGW*|MSYS*) echo "windows" ;;
+            FreeBSD*)   echo "freebsd" ;;
+            *)          echo "unknown" ;;
+        esac
+        return 0
+    fi
+}
+
+# Description: Get the shell type
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Shell type (bash, zsh, dash, posix, unknown)
+shell_abstraction_get_shell_type() {
+    # Ensure posix_get_shell_type is available from the test context
+    if command -v posix_get_shell_type >/dev/null 2>&1; then
+        posix_get_shell_type
+        return $?
+    else
+        # Fallback implementation
+        if [ -n "${BASH_VERSION}" ]; then
+            echo "bash"
+        elif [ -n "${ZSH_VERSION}" ]; then
+            echo "zsh"
+        elif [ -n "${DASH_VERSION}" ]; then
+            echo "dash"
+        else
+            echo "posix"
+        fi
+        return 0
+    fi
+}
+
+# Description: Check if a command exists
+# Parameters:
+#   $1 - Command name to check
+# Returns:
+#   0 - Command exists
+#   1 - Command does not exist
+shell_abstraction_check_command() {
+    # Ensure posix_check_command is available from the test context
+    if command -v posix_check_command >/dev/null 2>&1; then
+        posix_check_command "$1"
+        return $?
+    else
+        # Fallback implementation
+        if [ -z "$1" ]; then
+            return 1
+        fi
+
+        command -v "$1" >/dev/null 2>&1
+        return $?
+    fi
+}
