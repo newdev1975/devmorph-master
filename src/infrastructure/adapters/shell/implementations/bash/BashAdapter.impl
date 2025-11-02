@@ -1,0 +1,70 @@
+#!/bin/sh
+# Implementation: BashAdapter
+# Description: Bash-specific shell adapter implementation
+
+# Description: Get the name of this adapter
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes "Bash"
+bash_adapter_get_name() {
+    echo "Bash"
+    return 0
+}
+
+# Description: Check if this adapter is compatible with the current environment
+# Parameters: None
+# Returns:
+#   0 - Compatible
+#   1 - Not compatible
+bash_adapter_is_compatible() {
+    # Check if we're running in Bash or if Bash is available
+    if [ -n "${BASH_VERSION}" ]; then
+        return 0
+    elif command -v bash >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Get the capabilities of this adapter
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes capabilities as space-separated list
+bash_adapter_get_capabilities() {
+    capabilities="arrays assoc_arrays process_substitution function_declarations advanced_conditionals bash_extensions"
+    echo "$capabilities"
+    return 0
+}
+
+# Description: Execute a bash-specific command
+# Parameters:
+#   $1 - Command to execute
+# Returns:
+#   0 - Command executed successfully
+#   1 - Command execution failed
+bash_adapter_execute_command() {
+    if [ -z "$1" ]; then
+        echo "ERROR: bash_adapter_execute_command: No command provided" >&2
+        return 1
+    fi
+
+    # If we're already in bash, execute directly
+    if [ -n "${BASH_VERSION}" ]; then
+        eval "$1"
+        return $?
+    else
+        # Use the bash command if available
+        if command -v bash >/dev/null 2>&1; then
+            bash -c "$1" 2>/dev/null
+            return $?
+        else
+            echo "ERROR: bash_adapter_execute_command: Bash not available" >&2
+            return 1
+        fi
+    fi
+}
