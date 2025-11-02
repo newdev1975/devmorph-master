@@ -1,0 +1,158 @@
+#!/bin/sh
+# Implementation: CompatibilityChecker
+# Description: Compatibility checking implementation
+
+# Import shell utilities
+if [ -f "$(dirname "$0")/../shell_utils.sh" ]; then
+    . "$(dirname "$0")/../shell_utils.sh"
+elif [ -f "./shell_utils.sh" ]; then
+    . "./shell_utils.sh"
+else
+    echo "ERROR: shell_utils.sh not found" >&2
+    exit 1
+fi
+
+# Description: Check POSIX compatibility
+# Parameters: None
+# Returns:
+#   0 - POSIX compatible
+#   1 - Not POSIX compatible
+compatibility_checker_check_posix_compatibility() {
+    # Basic POSIX compliance test
+    if sh -c 'echo test' >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check Bash compatibility
+# Parameters: None
+# Returns:
+#   0 - Bash compatible
+#   1 - Not Bash compatible
+compatibility_checker_check_bash_compatibility() {
+    # Check if bash is available and if we're running in bash
+    if [ -n "${BASH_VERSION}" ]; then
+        return 0
+    elif command -v bash >/dev/null 2>&1; then
+        # Bash is available on the system
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check Zsh compatibility
+# Parameters: None
+# Returns:
+#   0 - Zsh compatible
+#   1 - Not Zsh compatible
+compatibility_checker_check_zsh_compatibility() {
+    # Check if zsh is available
+    if [ -n "${ZSH_VERSION}" ]; then
+        return 0
+    elif command -v zsh >/dev/null 2>&1; then
+        # Zsh is available on the system
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check PowerShell compatibility
+# Parameters: None
+# Returns:
+#   0 - PowerShell compatible (available)
+#   1 - Not PowerShell compatible
+compatibility_checker_check_powershell_compatibility() {
+    # Check if PowerShell is available
+    if command -v pwsh >/dev/null 2>&1 || command -v powershell >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Check Dash compatibility
+# Parameters: None
+# Returns:
+#   0 - Dash compatible
+#   1 - Not Dash compatible
+compatibility_checker_check_dash_compatibility() {
+    # Check if dash is available
+    if [ -n "${DASH_VERSION}" ]; then
+        return 0
+    elif command -v dash >/dev/null 2>&1; then
+        # Dash is available on the system
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Description: Get a comprehensive compatibility report
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes compatibility status for all shell types
+compatibility_checker_get_compatibility_report() {
+    report=""
+    
+    if compatibility_checker_check_posix_compatibility; then
+        report="$report POSIX:compatible"
+    else
+        report="$report POSIX:incompatible"
+    fi
+    
+    if compatibility_checker_check_bash_compatibility; then
+        report="$report BASH:compatible"
+    else
+        report="$report BASH:incompatible"
+    fi
+    
+    if compatibility_checker_check_zsh_compatibility; then
+        report="$report ZSH:compatible"
+    else
+        report="$report ZSH:incompatible"
+    fi
+    
+    if compatibility_checker_check_powershell_compatibility; then
+        report="$report POWERSHELL:compatible"
+    else
+        report="$report POWERSHELL:incompatible"
+    fi
+    
+    if compatibility_checker_check_dash_compatibility; then
+        report="$report DASH:compatible"
+    else
+        report="$report DASH:incompatible"
+    fi
+    
+    echo "$report"
+    return 0
+}
+
+# Description: Validate support for a specific platform
+# Parameters:
+#   $1 - Platform to validate (linux, darwin, windows, freebsd, unknown)
+# Returns:
+#   0 - Platform is supported
+#   1 - Platform is not supported
+compatibility_checker_validate_platform_support() {
+    if [ -z "$1" ]; then
+        return 1
+    fi
+    
+    current_os=$(get_os_type)
+    
+    case "$1" in
+        "$current_os")
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
