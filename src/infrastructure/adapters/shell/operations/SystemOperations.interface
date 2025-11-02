@@ -1,0 +1,19 @@
+#!/bin/sh
+# Interface: SystemOperations
+# Description: System operations abstraction interface
+
+# Interface definition for system operations
+# This defines the contract for all system-related operations
+
+# Interface: SystemOperations
+# Methods:
+#   get_os_type(): OSType
+#   get_shell_type(): ShellType
+#   check_command(command: string): boolean
+#   get_environment_variable(var: string): string
+#   set_environment_variable(var: string, value: string): boolean
+#   unset_environment_variable(var: string): boolean
+#   get_current_directory(): string
+#   change_directory(path: string): boolean
+#   get_current_user(): string
+#   get_hostname(): string

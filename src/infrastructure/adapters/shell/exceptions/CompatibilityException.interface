@@ -1,0 +1,13 @@
+#!/bin/sh
+# Interface: CompatibilityException
+# Description: Compatibility exception interface
+
+# Interface definition for compatibility exceptions
+# This defines the contract for compatibility-related exceptions
+
+# Interface: CompatibilityException
+# Extends: ShellException
+# Methods:
+#   get_required_feature(): string
+#   get_supported_features(): array
+#   suggest_alternative(): string

@@ -1,0 +1,19 @@
+#!/bin/sh
+# Interface: FileOperations
+# Description: File operations abstraction interface
+
+# Interface definition for file operations
+# This defines the contract for all file-related operations
+
+# Interface: FileOperations
+# Methods:
+#   mkdir(path: string): boolean
+#   rm(path: string): boolean
+#   cp(src: string, dest: string): boolean
+#   mv(src: string, dest: string): boolean
+#   exists(path: string): boolean
+#   is_directory(path: string): boolean
+#   is_file(path: string): boolean
+#   read_file(path: string): string
+#   write_file(path: string, content: string): boolean
+#   append_file(path: string, content: string): boolean

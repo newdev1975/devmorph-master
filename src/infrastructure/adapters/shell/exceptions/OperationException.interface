@@ -1,0 +1,13 @@
+#!/bin/sh
+# Interface: OperationException
+# Description: Operation exception interface
+
+# Interface definition for operation exceptions
+# This defines the contract for operation-related exceptions
+
+# Interface: OperationException
+# Extends: ShellException
+# Methods:
+#   get_operation(): string
+#   get_context(): string
+#   get_exit_code(): number

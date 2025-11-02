@@ -1,0 +1,14 @@
+#!/bin/sh
+# Interface: ShellDetector
+# Description: Shell detection interface
+
+# Interface definition for shell detection
+# This defines the contract for detecting shell types and capabilities
+
+# Interface: ShellDetector
+# Methods:
+#   detect_shell(): ShellType
+#   detect_features(): FeatureSet
+#   check_compatibility(required_features: array): boolean
+#   get_shell_version(): string
+#   is_posix_compliant(): boolean
