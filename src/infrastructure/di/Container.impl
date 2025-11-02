@@ -1,0 +1,243 @@
+#!/bin/sh
+# Implementation: Container.impl
+# Description: Main dependency injection container implementation
+# Uses shell abstraction layer for cross-platform compatibility
+
+# Description: Initialize the DI container
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+container_init() {
+    # Load shell utilities for cross-platform operations
+    if [ -f "$(dirname "$0")/../adapters/shell/shell_utils.sh" ]; then
+        . "$(dirname "$0")/../adapters/shell/shell_utils.sh"
+    elif [ -f "./shell_utils.sh" ]; then
+        . "./shell_utils.sh"
+    else
+        echo "ERROR: shell_utils.sh not found" >&2
+        return 1
+    fi
+    
+    # Create temporary directories for DI registry and instances
+    if ! command -v mktemp >/dev/null 2>&1; then
+        log_error "mktemp command not available"
+        return 1
+    fi
+    
+    # Use a unique temporary directory for this container instance
+    DI_CONTAINER_TMPDIR=$(mktemp -d 2>/dev/null || echo "/tmp/di_container_$$")
+    if [ ! -d "$DI_CONTAINER_TMPDIR" ]; then
+        log_error "Failed to create container temp directory"
+        return 1
+    fi
+    
+    # Create subdirectories for registry and instances
+    DI_REGISTRY_DIR="$DI_CONTAINER_TMPDIR/registry"
+    DI_INSTANCES_DIR="$DI_CONTAINER_TMPDIR/instances"
+    DI_SCOPES_DIR="$DI_CONTAINER_TMPDIR/scopes"
+    
+    mkdir -p "$DI_REGISTRY_DIR" || return 1
+    mkdir -p "$DI_INSTANCES_DIR" || return 1
+    mkdir -p "$DI_SCOPES_DIR" || return 1
+    
+    # Initialize container state
+    export DI_CONTAINER_TMPDIR
+    export DI_REGISTRY_DIR
+    export DI_INSTANCES_DIR
+    export DI_SCOPES_DIR
+    
+    return 0
+}
+
+# Description: Register a service binding in the container
+# Parameters:
+#   $1 - interface name
+#   $2 - implementation callable
+#   $3 - lifetime (optional, default: transient)
+# Returns: 0 on success, 1 on failure
+container_register() {
+    if [ $# -lt 2 ]; then
+        log_error "container_register: interface name and implementation required"
+        return 1
+    fi
+    
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "container_register: interface name and implementation cannot be empty"
+        return 1
+    fi
+    
+    interface_name="$1"
+    implementation="$2"
+    lifetime="${3:-transient}"  # Default to transient if not specified
+    
+    # Validate lifetime parameter
+    case "$lifetime" in
+        "singleton"|"transient"|"scoped")
+            # Valid lifetime type
+            ;;
+        *)
+            log_error "container_register: invalid lifetime '$lifetime', must be singleton, transient, or scoped"
+            return 1
+            ;;
+    esac
+    
+    # Store the binding in the registry
+    binding_file="$DI_REGISTRY_DIR/$interface_name"
+    printf "%s:%s" "$implementation" "$lifetime" > "$binding_file" || return 1
+    
+    return 0
+}
+
+# Description: Resolve a service instance from the container
+# Parameters:
+#   $1 - interface name
+# Returns: service instance on success, 1 on failure
+container_resolve() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "container_resolve: interface name required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    
+    # Check if the interface is registered
+    binding_file="$DI_REGISTRY_DIR/$interface_name"
+    if [ ! -f "$binding_file" ]; then
+        log_error "container_resolve: service '$interface_name' not registered"
+        return 1
+    fi
+    
+    # Read the binding information
+    binding_data=$(cat "$binding_file")
+    if [ -z "$binding_data" ]; then
+        log_error "container_resolve: empty binding for '$interface_name'"
+        return 1
+    fi
+    
+    # Extract implementation and lifetime from binding data
+    implementation=$(printf "%s" "$binding_data" | cut -d':' -f1)
+    lifetime=$(printf "%s" "$binding_data" | cut -d':' -f2-)
+    
+    # Get or create instance based on lifetime
+    if [ "$lifetime" = "singleton" ]; then
+        instance_key="$interface_name"
+        instance_file="$DI_INSTANCES_DIR/$instance_key"
+        
+        if [ -f "$instance_file" ]; then
+            # Return existing singleton instance
+            cat "$instance_file"
+        else
+            # Create new singleton instance and store it
+            new_instance=$(create_service_instance "$implementation" "$interface_name")
+            if [ $? -eq 0 ] && [ -n "$new_instance" ]; then
+                echo "$new_instance" > "$instance_file" || return 1
+                echo "$new_instance"
+            else
+                return 1
+            fi
+        fi
+    elif [ "$lifetime" = "scoped" ]; then
+        # For scoped lifetime, check if we have an active scope
+        scope_id="${DI_ACTIVE_SCOPE:-default}"
+        scoped_instance_file="$DI_SCOPES_DIR/$scope_id-$interface_name"
+        
+        if [ -f "$scoped_instance_file" ]; then
+            # Return existing scoped instance
+            cat "$scoped_instance_file"
+        else
+            # Create new scoped instance and store it
+            new_instance=$(create_service_instance "$implementation" "$interface_name")
+            if [ $? -eq 0 ] && [ -n "$new_instance" ]; then
+                echo "$new_instance" > "$scoped_instance_file" || return 1
+                echo "$new_instance"
+            else
+                return 1
+            fi
+        fi
+    else
+        # Default to transient - create a new instance each time
+        create_service_instance "$implementation" "$interface_name"
+    fi
+}
+
+# Description: Check if a service is registered in the container
+# Parameters:
+#   $1 - interface name
+# Returns: 0 if registered, 1 if not
+container_has() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        return 1
+    fi
+    
+    interface_name="$1"
+    binding_file="$DI_REGISTRY_DIR/$interface_name"
+    
+    [ -f "$binding_file" ]
+}
+
+# Description: Clear all bindings from the container
+# Parameters: None
+# Returns: 0 on success
+container_clear() {
+    # Remove all registry entries
+    if [ -d "$DI_REGISTRY_DIR" ]; then
+        rm -rf "$DI_REGISTRY_DIR"/*
+    fi
+    
+    # Remove all instances
+    if [ -d "$DI_INSTANCES_DIR" ]; then
+        rm -rf "$DI_INSTANCES_DIR"/*
+    fi
+    
+    # Remove all scopes
+    if [ -d "$DI_SCOPES_DIR" ]; then
+        rm -rf "$DI_SCOPES_DIR"/*
+    fi
+    
+    return 0
+}
+
+# Description: Destroy the container and clean up resources
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+container_destroy() {
+    if [ -n "$DI_CONTAINER_TMPDIR" ] && [ -d "$DI_CONTAINER_TMPDIR" ]; then
+        rm -rf "$DI_CONTAINER_TMPDIR" || return 1
+    fi
+    
+    # Unset environment variables
+    unset DI_CONTAINER_TMPDIR
+    unset DI_REGISTRY_DIR
+    unset DI_INSTANCES_DIR
+    unset DI_SCOPES_DIR
+    unset DI_ACTIVE_SCOPE
+    
+    return 0
+}
+
+# Description: Set the active scope for scoped lifetime services
+# Parameters:
+#   $1 - scope identifier
+# Returns: 0 on success, 1 on failure
+container_set_scope() {
+    if [ $# -lt 1 ] || [ -z "$1" ]; then
+        log_error "container_set_scope: scope identifier required"
+        return 1
+    fi
+    
+    export DI_ACTIVE_SCOPE="$1"
+    return 0
+}
+
+# Description: Get all registered interface names
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+# Output: List of registered interface names
+container_get_registered_interfaces() {
+    if [ -d "$DI_REGISTRY_DIR" ]; then
+        for file in "$DI_REGISTRY_DIR"/*; do
+            if [ -f "$file" ]; then
+                basename "$file"
+            fi
+        done
+    fi
+}
