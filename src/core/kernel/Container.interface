@@ -1,0 +1,26 @@
+// Container interface concept
+interface Container {
+    // Register an interface to a factory function
+    register(interface, factory) -> void
+    
+    // Register a singleton instance
+    registerSingleton(interface, factory) -> void
+    
+    // Register a transient instance (new instance each time)
+    registerTransient(interface, factory) -> void
+    
+    // Register a scoped instance (single instance per scope)
+    registerScoped(interface, factory) -> void
+    
+    // Get an instance of a registered interface
+    get(interface) -> object
+    
+    // Check if an interface is registered
+    has(interface) -> boolean
+    
+    // Resolve dependencies for a constructor
+    resolve(constructor) -> object
+    
+    // Create an instance with specific parameters
+    create(constructor, parameters) -> object
+}
