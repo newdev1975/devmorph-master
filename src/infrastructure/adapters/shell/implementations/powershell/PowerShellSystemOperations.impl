@@ -1,0 +1,96 @@
+#!/bin/sh
+# Implementation: PowerShellSystemOperations
+# Description: PowerShell-specific system operations for Windows integration
+
+# Description: Get the current OS type with Windows-specific detection
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Echoes the OS type (linux, darwin, windows, freebsd, unknown)
+powershell_get_os_type() {
+    # Enhanced Windows detection for PowerShell environment
+    if command -v pwsh >/dev/null 2>&1 || command -v powershell >/dev/null 2>&1; then
+        # Try to detect Windows through PowerShell
+        if pwsh -Command "[Environment]::OSVersion.Platform" 2>/dev/null | grep -q "Win"; then
+            echo "windows"
+            return 0
+        elif powershell -Command "[Environment]::OSVersion.Platform" 2>/dev/null | grep -q "Win"; then
+            echo "windows"
+            return 0
+        fi
+    fi
+    
+    # Fallback to standard detection
+    case "$(uname -s)" in
+        Linux*)     echo "linux" ;;
+        Darwin*)    echo "darwin" ;;
+        CYGWIN*|MINGW*|MSYS*) echo "windows" ;;
+        FreeBSD*)   echo "freebsd" ;;
+        *)          echo "unknown" ;;
+    esac
+    return 0
+}
+
+# Description: Windows-specific command checking
+# Parameters:
+#   $1 - Command name to check
+# Returns:
+#   0 - Command exists
+#   1 - Command does not exist
+powershell_check_command() {
+    if [ -z "$1" ]; then
+        return 1
+    fi
+
+    # Check using PowerShell if available
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "Get-Command '$1'" >/dev/null 2>&1
+        return $?
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "Get-Command '$1'" >/dev/null 2>&1
+        return $?
+    else
+        # Fallback to standard command check
+        command -v "$1" >/dev/null 2>&1
+        return $?
+    fi
+}
+
+# Description: Get current user in Windows environment
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   Current user name
+powershell_get_current_user() {
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "$env:USERNAME" 2>/dev/null || whoami 2>/dev/null || echo "$USER" || echo "unknown"
+        return 0
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "$env:USERNAME" 2>/dev/null || whoami 2>/dev/null || echo "$USER" || echo "unknown"
+        return 0
+    else
+        whoami 2>/dev/null || echo "$USER" || echo "unknown"
+        return 0
+    fi
+}
+
+# Description: Get hostname in Windows environment
+# Parameters: None
+# Returns:
+#   0 - Always returns 0
+# Output:
+#   System hostname
+powershell_get_hostname() {
+    if command -v pwsh >/dev/null 2>&1; then
+        pwsh -Command "$env:COMPUTERNAME" 2>/dev/null || hostname 2>/dev/null || echo "unknown"
+        return 0
+    elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "$env:COMPUTERNAME" 2>/dev/null || hostname 2>/dev/null || echo "unknown"
+        return 0
+    else
+        hostname 2>/dev/null || echo "unknown"
+        return 0
+    fi
+}
