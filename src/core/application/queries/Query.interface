@@ -1,0 +1,14 @@
+// Query interface concept
+interface Query {
+    // Get the query name/type
+    getName() -> string
+    
+    // Validate query parameters
+    validate() -> ValidationResult
+    
+    // Get query data
+    getData() -> object
+    
+    // Get query metadata
+    getMetadata() -> object
+}

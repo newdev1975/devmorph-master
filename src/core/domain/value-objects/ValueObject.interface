@@ -1,0 +1,11 @@
+// Domain Value Object interface concept
+interface ValueObject {
+    // Check if this value object is equal to another (by value)
+    equals(other) -> boolean
+    
+    // Validate the value object state
+    validate() -> ValidationResult
+    
+    // Get the value of this object
+    getValue() -> mixed
+}

@@ -1,0 +1,8 @@
+// Domain Service interface concept
+interface DomainService {
+    // Execute the service operation
+    execute(parameters) -> ServiceResult
+    
+    // Validate input parameters
+    validate(parameters) -> ValidationResult
+}

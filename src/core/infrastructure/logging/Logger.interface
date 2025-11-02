@@ -1,0 +1,26 @@
+// Logger interface concept
+interface Logger {
+    // Log a debug message
+    debug(message, context) -> void
+    
+    // Log an info message
+    info(message, context) -> void
+    
+    // Log a warning message
+    warning(message, context) -> void
+    
+    // Log an error message
+    error(message, context) -> void
+    
+    // Log a critical error message
+    critical(message, context) -> void
+    
+    // Set the logging level
+    setLevel(level) -> void
+    
+    // Get the current logging level
+    getLevel() -> string
+    
+    // Add a log entry with specific level and context
+    log(level, message, context) -> void
+}
