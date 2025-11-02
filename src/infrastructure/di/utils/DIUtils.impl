@@ -1,0 +1,269 @@
+#!/bin/sh
+# Implementation: DIUtils.impl
+# Description: Utility functions for the DI container
+
+# Description: Load all DI container components
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+di_utils_load_all_components() {
+    # This function will source all the DI container components
+    # It helps to make sure all functions are available in the current shell context
+    
+    script_dir=$(dirname "$0")
+    
+    # Source the main container implementation
+    if [ -f "$script_dir/../Container.impl" ]; then
+        . "$script_dir/../Container.impl" || return 1
+    else
+        echo "ERROR: Container.impl not found" >&2
+        return 1
+    fi
+    
+    # Source the service registry implementation
+    if [ -f "$script_dir/../ServiceRegistry.impl" ]; then
+        . "$script_dir/../ServiceRegistry.impl" || return 1
+    else
+        echo "ERROR: ServiceRegistry.impl not found" >&2
+        return 1
+    fi
+    
+    # Source the service resolver implementation
+    if [ -f "$script_dir/../ServiceResolver.impl" ]; then
+        . "$script_dir/../ServiceResolver.impl" || return 1
+    else
+        echo "ERROR: ServiceResolver.impl not found" >&2
+        return 1
+    fi
+    
+    # Source the lifetime manager implementation
+    if [ -f "$script_dir/../LifetimeManager.impl" ]; then
+        . "$script_dir/../LifetimeManager.impl" || return 1
+    else
+        echo "ERROR: LifetimeManager.impl not found" >&2
+        return 1
+    fi
+    
+    # Source the circular dependency detector implementation
+    if [ -f "$script_dir/../CircularDependencyDetector.impl" ]; then
+        . "$script_dir/../CircularDependencyDetector.impl" || return 1
+    else
+        echo "ERROR: CircularDependencyDetector.impl not found" >&2
+        return 1
+    fi
+    
+    # Source the exception handling implementation
+    if [ -f "$script_dir/../exceptions/ExceptionHandling.impl" ]; then
+        . "$script_dir/../exceptions/ExceptionHandling.impl" || return 1
+    else
+        echo "ERROR: ExceptionHandling.impl not found" >&2
+        return 1
+    fi
+    
+    # Source the factory implementation
+    if [ -f "$script_dir/../factories/ServiceFactory.impl" ]; then
+        . "$script_dir/../factories/ServiceFactory.impl" || return 1
+    else
+        echo "ERROR: ServiceFactory.impl not found" >&2
+        return 1
+    fi
+    
+    return 0
+}
+
+# Description: Initialize a complete DI container with all components
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+di_utils_initialize_container() {
+    # Load all components first
+    di_utils_load_all_components || return 1
+    
+    # Initialize the container
+    container_init || return 1
+    
+    # Initialize the service registry
+    service_registry_init || return 1
+    
+    return 0
+}
+
+# Description: Register a service with dependencies
+# Parameters:
+#   $1 - interface name
+#   $2 - implementation
+#   $3 - lifetime (optional)
+#   $@ - dependencies (after the first three parameters)
+# Returns: 0 on success, 1 on failure
+di_utils_register_with_dependencies() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "di_utils_register_with_dependencies: interface name and implementation required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    implementation="$2"
+    lifetime="${3:-transient}"
+    
+    # Parse remaining arguments as dependencies
+    shift 3
+    dependencies="$*"
+    
+    # Register the service in the container
+    container_register "$interface_name" "$implementation" "$lifetime" || return 1
+    
+    # Set dependencies for the implementation
+    if [ -n "$dependencies" ]; then
+        set_service_dependencies "$implementation" $dependencies || {
+            log_error "Failed to set dependencies for service: $interface_name"
+            return 1
+        }
+    fi
+    
+    return 0
+}
+
+# Description: Create a simple service binding without dependencies
+# Parameters:
+#   $1 - interface name
+#   $2 - implementation
+#   $3 - lifetime (optional)
+# Returns: 0 on success, 1 on failure
+di_utils_register_simple_service() {
+    if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+        log_error "di_utils_register_simple_service: interface name and implementation required"
+        return 1
+    fi
+    
+    interface_name="$1"
+    implementation="$2"
+    lifetime="${3:-transient}"
+    
+    # Register the service
+    container_register "$interface_name" "$implementation" "$lifetime" || return 1
+    
+    return 0
+}
+
+# Description: Check if the container is properly initialized
+# Parameters: None
+# Returns: 0 if initialized, 1 if not
+di_utils_is_container_initialized() {
+    if [ -z "$DI_REGISTRY_DIR" ] || [ -z "$DI_INSTANCES_DIR" ] || [ -z "$DI_SCOPES_DIR" ]; then
+        return 1
+    fi
+    
+    if [ ! -d "$DI_REGISTRY_DIR" ] || [ ! -d "$DI_INSTANCES_DIR" ] || [ ! -d "$DI_SCOPES_DIR" ]; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# Description: Get container statistics
+# Parameters: None
+# Returns: 0 on success
+# Output: container statistics
+di_utils_get_container_stats() {
+    if ! di_utils_is_container_initialized; then
+        echo "Container is not initialized"
+        return 1
+    fi
+    
+    # Count registered services
+    service_count=0
+    if [ -d "$DI_REGISTRY_DIR" ]; then
+        for file in "$DI_REGISTRY_DIR"/*; do
+            if [ -f "$file" ] && [ "$(basename "$file")" != ".registered_interfaces" ]; then
+                service_count=$((service_count + 1))
+            fi
+        done
+    fi
+    
+    # Count singleton instances
+    singleton_count=0
+    if [ -d "$DI_INSTANCES_DIR" ]; then
+        singleton_count=$(find "$DI_INSTANCES_DIR" -type f 2>/dev/null | wc -l)
+    fi
+    
+    # Count scoped instances
+    scoped_count=0
+    if [ -d "$DI_SCOPES_DIR" ]; then
+        scoped_count=$(find "$DI_SCOPES_DIR" -type f 2>/dev/null | wc -l)
+    fi
+    
+    echo "Container Statistics:"
+    echo "  Registered services: $service_count"
+    echo "  Singleton instances: $singleton_count"
+    echo "  Scoped instances: $scoped_count"
+    
+    return 0
+}
+
+# Description: Reset the container to a clean state
+# Parameters: None
+# Returns: 0 on success, 1 on failure
+di_utils_reset_container() {
+    # Clear all registrations
+    container_clear || return 1
+    
+    # Destroy and reinitialize the container
+    container_destroy || return 1
+    container_init || return 1
+    
+    # Reinitialize the service registry
+    service_registry_init || return 1
+    
+    return 0
+}
+
+# Description: Validate the entire container setup
+# Parameters: None
+# Returns: 0 if valid, 1 if invalid
+di_utils_validate_container() {
+    # Validate container state
+    if ! validate_container_state; then
+        return 1
+    fi
+    
+    # Validate all registered services and their dependency chains
+    all_interfaces=$(container_get_registered_interfaces)
+    for interface in $all_interfaces; do
+        if ! validate_dependency_chain "$interface"; then
+            return 1
+        fi
+    done
+    
+    return 0
+}
+
+# Description: Print all registered interfaces with their configurations
+# Parameters: None
+# Returns: 0 on success
+# Output: interface details
+di_utils_list_all_registrations() {
+    if ! di_utils_is_container_initialized; then
+        echo "Container is not initialized"
+        return 1
+    fi
+    
+    echo "Registered Services:"
+    all_interfaces=$(container_get_registered_interfaces)
+    for interface in $all_interfaces; do
+        binding_info=$(container_get_binding "$interface") || continue
+        implementation=$(printf "%s" "$binding_info" | cut -d':' -f1)
+        lifetime=$(printf "%s" "$binding_info" | cut -d':' -f2-)
+        echo "  Interface: $interface"
+        echo "    Implementation: $implementation"
+        echo "    Lifetime: $lifetime"
+        
+        # Show dependencies if any
+        deps=$(get_service_dependencies "$implementation") || true
+        if [ -n "$deps" ]; then
+            echo "    Dependencies: $deps"
+        else
+            echo "    Dependencies: None"
+        fi
+        echo ""
+    done
+    
+    return 0
+}
