@@ -1,0 +1,227 @@
+#!/bin/sh
+# DependencyResolver.interface - Dependency resolution with circular detection
+# Single Responsibility: Resolve service dependencies
+# POSIX Compliance: File-based resolution stack
+
+# Source dependencies
+_di_resolver_dir=$(dirname "$0")
+. "${_di_resolver_dir}/../registry/ServiceRegistry.interface"
+. "${_di_resolver_dir}/../lifecycle/LifetimeManager.interface"
+
+# Initialize resolution stack (for circular dependency detection)
+di_resolver_init() {
+    DI_RESOLUTION_STACK="${DI_RESOLUTION_STACK:-${TMPDIR:-/tmp}/di_stack_$$}"
+    
+    if [ ! -f "$DI_RESOLUTION_STACK" ]; then
+        touch "$DI_RESOLUTION_STACK" || return 1
+    fi
+    
+    return 0
+}
+
+# Push interface onto resolution stack
+# Args: interface_name
+di_stack_push() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_resolver_init || return 1
+    
+    printf "%s\n" "$_interface" >> "$DI_RESOLUTION_STACK"
+}
+
+# Pop interface from resolution stack
+# Returns: 0 on success
+di_stack_pop() {
+    di_resolver_init || return 1
+    
+    # POSIX: Use sed to remove last line
+    _temp_file="${DI_RESOLUTION_STACK}.tmp"
+    sed '$d' "$DI_RESOLUTION_STACK" > "$_temp_file" 2>/dev/null || true
+    mv "$_temp_file" "$DI_RESOLUTION_STACK"
+}
+
+# Check if interface is in resolution stack (circular dependency)
+# Args: interface_name
+# Returns: 0 if in stack (circular!), 1 otherwise
+di_stack_contains() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_resolver_init || return 1
+    
+    grep -q "^${_interface}$" "$DI_RESOLUTION_STACK" 2>/dev/null
+}
+
+# Clear resolution stack
+di_stack_clear() {
+    di_resolver_init || return 1
+    
+    : > "$DI_RESOLUTION_STACK"
+}
+
+# Get current resolution stack (for error messages)
+# Prints: stack trace (one interface per line)
+di_stack_trace() {
+    di_resolver_init || return 1
+    
+    cat "$DI_RESOLUTION_STACK" 2>/dev/null
+}
+
+# Resolve service (main entry point)
+# Args: interface_name
+# Prints: instance_id
+# Returns: 0 on success, 1 on failure
+di_resolve() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    # Check if registered
+    if ! di_is_registered "$_interface"; then
+        printf "ERROR: Service not registered: %s\n" "$_interface" >&2
+        return 1
+    fi
+    
+    # Get lifetime
+    _lifetime=$(di_get_lifetime "$_interface")
+    
+    # If singleton and cached, return cached instance
+    if [ "$_lifetime" = "singleton" ]; then
+        if di_has_singleton "$_interface"; then
+            di_get_singleton "$_interface"
+            return 0
+        fi
+    fi
+    
+    # Resolve with dependencies
+    _instance=$(di_resolve_with_deps "$_interface") || return 1
+    
+    # Cache if singleton
+    if [ "$_lifetime" = "singleton" ]; then
+        di_cache_singleton "$_interface" "$_instance" || return 1
+    fi
+    
+    printf "%s" "$_instance"
+    return 0
+}
+
+# Resolve service with dependency injection
+# Args: interface_name
+# Prints: instance_id
+# Returns: 0 on success, 1 on failure (including circular deps)
+di_resolve_with_deps() {
+    _interface="${1:-}"
+    
+    # Circular dependency check
+    if di_stack_contains "$_interface"; then
+        printf "ERROR: Circular dependency detected:\n" >&2
+        di_stack_trace >&2
+        printf "  -> %s\n" "$_interface" >&2
+        return 1
+    fi
+    
+    # Push onto stack
+    di_stack_push "$_interface"
+    
+    # Get dependencies
+    _deps=$(di_get_dependencies "$_interface")
+    
+    # Resolve dependencies first (recursive)
+    _resolved_deps=""
+    if [ -n "$_deps" ]; then
+        # POSIX: Use IFS to split comma-separated deps
+        _old_ifs="$IFS"
+        IFS=','
+        for _dep in $_deps; do
+            # Trim whitespace
+            _dep=$(printf "%s" "$_dep" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            
+            # Recursively resolve dependency
+            _dep_instance=$(di_resolve "$_dep") || {
+                di_stack_pop
+                return 1
+            }
+            
+            # Accumulate resolved dependencies
+            if [ -z "$_resolved_deps" ]; then
+                _resolved_deps="$_dep_instance"
+            else
+                _resolved_deps="${_resolved_deps},${_dep_instance}"
+            fi
+        done
+        IFS="$_old_ifs"
+    fi
+    
+    # Get implementation path
+    _implementation=$(di_get_implementation "$_interface")
+    
+    # Create instance
+    _instance=$(di_create_instance "$_implementation" "$_resolved_deps") || {
+        di_stack_pop
+        return 1
+    }
+    
+    # Pop from stack
+    di_stack_pop
+    
+    printf "%s" "$_instance"
+    return 0
+}
+
+# Create service instance (factory method)
+# Args: implementation_path, resolved_dependencies (comma-separated instance IDs)
+# Prints: instance_id
+# Returns: 0 on success, 1 on failure
+di_create_instance() {
+    _impl_path="${1:-}"
+    _deps="${2:-}"
+    
+    [ -z "$_impl_path" ] && return 1
+    
+    # Generate unique instance ID
+    _instance_id="instance_$(date +%s%N 2>/dev/null || printf "%s" "$$")_$$"
+    
+    # Source implementation (makes functions available)
+    if [ -f "$_impl_path" ]; then
+        . "$_impl_path" || {
+            printf "ERROR: Failed to source implementation: %s\n" "$_impl_path" >&2
+            return 1
+        }
+    else
+        printf "ERROR: Implementation not found: %s\n" "$_impl_path" >&2
+        return 1
+    fi
+    
+    # Call constructor if exists (convention: init_ClassName)
+    _class_name=$(basename "$_impl_path" .impl | sed 's/\./_/g')
+    _constructor="init_${_class_name}"
+    
+    if command -v "$_constructor" >/dev/null 2>&1; then
+        # Call constructor with dependencies
+        "$_constructor" "$_instance_id" "$_deps" || return 1
+    fi
+    
+    printf "%s" "$_instance_id"
+    return 0
+}
+
+# POSIX Compliance Notes:
+# - File-based resolution stack (circular detection)
+# - Recursive dependency resolution
+# - IFS manipulation for comma-separated parsing
+# - No bashisms: no arrays, no [[ ]]
+# - Error messages to stderr
+
+# Resolution Algorithm:
+# 1. Check if service registered
+# 2. Check lifetime (return cached if singleton)
+# 3. Push to resolution stack
+# 4. Check for circular dependencies
+# 5. Resolve dependencies (recursive)
+# 6. Create instance with resolved dependencies
+# 7. Cache if singleton
+# 8. Pop from stack
+# 9. Return instance ID
