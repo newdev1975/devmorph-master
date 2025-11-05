@@ -1,0 +1,79 @@
+#!/bin/sh
+# ShellFactory.interface - Shell adapter factory
+# Single Responsibility: Create appropriate shell adapter
+# Pattern: Abstract Factory + Strategy
+
+# Source detection modules
+. "$(dirname "$0")/../detection/ShellDetector.interface"
+. "$(dirname "$0")/../detection/PlatformDetector.interface"
+
+# Get appropriate shell adapter for current environment
+# Prints: adapter name (bash|zsh|posix|powershell)
+get_shell_adapter() {
+    _shell_type=$(detect_shell_type)
+    _os=$(detect_os)
+    
+    # Windows + PowerShell
+    if [ "$_os" = "windows" ] && [ "$_shell_type" = "powershell" ]; then
+        printf "powershell"
+        return 0
+    fi
+    
+    # Bash-specific optimizations available
+    if [ "$_shell_type" = "bash" ]; then
+        if supports_arrays; then
+            printf "bash"
+            return 0
+        fi
+    fi
+    
+    # Zsh-specific optimizations available
+    if [ "$_shell_type" = "zsh" ]; then
+        if supports_arrays; then
+            printf "zsh"
+            return 0
+        fi
+    fi
+    
+    # Default: POSIX adapter (works everywhere)
+    printf "posix"
+}
+
+# Check if shell supports advanced features
+# Returns: 0 if advanced features available, 1 for POSIX-only
+supports_advanced_features() {
+    _adapter=$(get_shell_adapter)
+    
+    case "$_adapter" in
+        bash|zsh|powershell)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Get recommended implementation strategy
+# Prints: fast|portable|compatible
+get_implementation_strategy() {
+    if supports_advanced_features; then
+        printf "fast"
+    elif is_posix_compatible; then
+        printf "portable"
+    else
+        printf "compatible"
+    fi
+}
+
+# DESIGN PATTERN: Abstract Factory
+# - Factory decides which adapter to use at runtime
+# - Based on detected shell and platform
+# - Enables shell-specific optimizations
+# - Maintains POSIX baseline compatibility
+#
+# STRATEGY: 
+# 1. Detect environment (shell + platform)
+# 2. Return most optimized adapter available
+# 3. Fall back to POSIX if advanced features unavailable
+# 4. Never fail - always return working adapter
