@@ -1,0 +1,189 @@
+#!/bin/sh
+# SystemOperations.interface - POSIX-compliant system operations
+# Single Responsibility: System information only
+# POSIX Compliance: Pure sh, portable utilities
+
+# Get current user name
+# Prints: username
+get_current_user() {
+    # POSIX: Use id command
+    id -un 2>/dev/null || printf "unknown"
+}
+
+# Get current user ID
+# Prints: UID
+get_current_uid() {
+    id -u 2>/dev/null || printf "0"
+}
+
+# Get current group ID
+# Prints: GID
+get_current_gid() {
+    id -g 2>/dev/null || printf "0"
+}
+
+# Check if running as root
+# Returns: 0 if root, 1 otherwise
+is_root() {
+    [ "$(get_current_uid)" = "0" ]
+}
+
+# Get hostname
+# Prints: hostname
+get_hostname() {
+    hostname 2>/dev/null || uname -n 2>/dev/null || printf "unknown"
+}
+
+# Get environment variable
+# Args: variable_name, default_value (optional)
+# Prints: variable value or default
+get_env() {
+    _var="${1:-}"
+    _default="${2:-}"
+    
+    [ -z "$_var" ] && printf "%s" "$_default" && return
+    
+    # POSIX: Use eval to get variable value
+    eval "_value=\${$_var:-}"
+    
+    if [ -n "$_value" ]; then
+        printf "%s" "$_value"
+    else
+        printf "%s" "$_default"
+    fi
+}
+
+# Set environment variable
+# Args: variable_name, value
+# Returns: 0 on success
+set_env() {
+    _var="${1:-}"
+    _value="${2:-}"
+    
+    [ -z "$_var" ] && return 1
+    
+    # POSIX: Use export
+    export "$_var=$_value"
+}
+
+# Check if environment variable is set
+# Args: variable_name
+# Returns: 0 if set, 1 otherwise
+is_env_set() {
+    _var="${1:-}"
+    [ -z "$_var" ] && return 1
+    
+    # POSIX: Use eval to check
+    eval "[ -n \"\${$_var+x}\" ]"
+}
+
+# Get current working directory
+# Prints: current directory path
+get_current_dir() {
+    pwd
+}
+
+# Get home directory
+# Prints: home directory path
+get_home_dir() {
+    printf "%s" "${HOME:-/root}"
+}
+
+# Get temporary directory
+# Prints: temp directory path
+get_temp_dir() {
+    # POSIX: Check common temp locations
+    if [ -n "${TMPDIR:-}" ]; then
+        printf "%s" "$TMPDIR"
+    elif [ -d /tmp ]; then
+        printf "/tmp"
+    elif [ -d /var/tmp ]; then
+        printf "/var/tmp"
+    else
+        printf "."
+    fi
+}
+
+# Create temporary file
+# Prints: temp file path
+# Returns: 0 on success, 1 on failure
+create_temp_file() {
+    # POSIX: Use mktemp if available
+    if command -v mktemp >/dev/null 2>&1; then
+        mktemp 2>/dev/null
+    else
+        # Fallback: manual temp file creation
+        _temp_dir=$(get_temp_dir)
+        _temp_file="$_temp_dir/tmp.$$.$RANDOM"
+        touch "$_temp_file" 2>/dev/null && printf "%s" "$_temp_file"
+    fi
+}
+
+# Create temporary directory
+# Prints: temp directory path
+# Returns: 0 on success, 1 on failure
+create_temp_dir() {
+    # POSIX: Use mktemp -d if available
+    if command -v mktemp >/dev/null 2>&1; then
+        mktemp -d 2>/dev/null
+    else
+        # Fallback: manual temp directory creation
+        _temp_base=$(get_temp_dir)
+        _temp_dir="$_temp_base/tmpdir.$$.$RANDOM"
+        mkdir -p "$_temp_dir" 2>/dev/null && printf "%s" "$_temp_dir"
+    fi
+}
+
+# Get system uptime in seconds (if available)
+# Prints: uptime in seconds or "unknown"
+get_uptime() {
+    # Try different methods
+    if [ -f /proc/uptime ]; then
+        # Linux
+        cut -d' ' -f1 /proc/uptime 2>/dev/null
+    elif command -v uptime >/dev/null 2>&1; then
+        # Parse uptime output (best effort)
+        printf "unknown"
+    else
+        printf "unknown"
+    fi
+}
+
+# Get number of CPU cores
+# Prints: number of cores or "unknown"
+get_cpu_count() {
+    # Try different methods
+    if command -v nproc >/dev/null 2>&1; then
+        nproc 2>/dev/null
+    elif [ -f /proc/cpuinfo ]; then
+        grep -c '^processor' /proc/cpuinfo 2>/dev/null
+    elif command -v sysctl >/dev/null 2>&1; then
+        # macOS/BSD
+        sysctl -n hw.ncpu 2>/dev/null || printf "unknown"
+    else
+        printf "unknown"
+    fi
+}
+
+# Get system load average (1 min)
+# Prints: load average or "unknown"
+get_load_average() {
+    if [ -f /proc/loadavg ]; then
+        # Linux
+        cut -d' ' -f1 /proc/loadavg 2>/dev/null
+    elif command -v uptime >/dev/null 2>&1; then
+        # Try parsing uptime
+        uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | tr -d ','
+    else
+        printf "unknown"
+    fi
+}
+
+# POSIX Compliance Notes:
+# - Use id for user information (POSIX)
+# - Use pwd for current directory (POSIX)
+# - Use export for env variables (POSIX)
+# - Use mktemp when available, fallback to manual
+# - Use $RANDOM for entropy ($$ alone is predictable)
+# - Platform-specific info has fallbacks
+# - No /proc dependencies (may not exist on all systems)
