@@ -1,0 +1,223 @@
+#!/bin/sh
+# StringOperations.interface - POSIX-compliant string operations
+# Single Responsibility: String manipulation only
+# POSIX Compliance: Pure sh, uses tr/cut/awk/sed
+
+# Trim whitespace from string
+# Args: string
+# Prints: trimmed string
+string_trim() {
+    _str="${1:-}"
+    
+    # POSIX: Use sed for trimming
+    printf "%s" "$_str" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+# Convert string to uppercase
+# Args: string
+# Prints: uppercase string
+string_to_upper() {
+    _str="${1:-}"
+    
+    # POSIX: Use tr for case conversion
+    printf "%s" "$_str" | tr '[:lower:]' '[:upper:]'
+}
+
+# Convert string to lowercase
+# Args: string
+# Prints: lowercase string
+string_to_lower() {
+    _str="${1:-}"
+    
+    # POSIX: Use tr for case conversion
+    printf "%s" "$_str" | tr '[:upper:]' '[:lower:]'
+}
+
+# Check if string contains substring
+# Args: haystack, needle
+# Returns: 0 if contains, 1 otherwise
+string_contains() {
+    _haystack="${1:-}"
+    _needle="${2:-}"
+    
+    # Empty needle or haystack
+    [ -z "$_needle" ] && return 1
+    [ -z "$_haystack" ] && return 1
+    
+    # POSIX: Use case for pattern matching
+    case "$_haystack" in
+        *"$_needle"*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Check if string starts with prefix
+# Args: string, prefix
+# Returns: 0 if starts with, 1 otherwise
+string_starts_with() {
+    _str="${1:-}"
+    _prefix="${2:-}"
+    
+    [ -z "$_prefix" ] && return 1
+    [ -z "$_str" ] && return 1
+    
+    # POSIX: Use case for prefix matching
+    case "$_str" in
+        "$_prefix"*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Check if string ends with suffix
+# Args: string, suffix
+# Returns: 0 if ends with, 1 otherwise
+string_ends_with() {
+    _str="${1:-}"
+    _suffix="${2:-}"
+    
+    [ -z "$_suffix" ] && return 1
+    [ -z "$_str" ] && return 1
+    
+    # POSIX: Use case for suffix matching
+    case "$_str" in
+        *"$_suffix")
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Get string length
+# Args: string
+# Prints: length
+string_length() {
+    _str="${1:-}"
+    
+    # POSIX: Use awk for length
+    printf "%s" "$_str" | awk '{print length}'
+}
+
+# Extract substring
+# Args: string, start_pos, length (optional)
+# Prints: substring
+# Note: start_pos is 1-based (POSIX convention)
+string_substring() {
+    _str="${1:-}"
+    _start="${2:-1}"
+    _length="${3:-}"
+    
+    # POSIX: Use cut for substring
+    if [ -n "$_length" ]; then
+        _end=$(expr "$_start" + "$_length" - 1)
+        printf "%s" "$_str" | cut -c"$_start"-"$_end"
+    else
+        # From start to end
+        printf "%s" "$_str" | cut -c"$_start"-
+    fi
+}
+
+# Replace first occurrence of pattern with replacement
+# Args: string, pattern, replacement
+# Prints: modified string
+string_replace_first() {
+    _str="${1:-}"
+    _pattern="${2:-}"
+    _replacement="${3:-}"
+    
+    [ -z "$_pattern" ] && printf "%s" "$_str" && return
+    
+    # POSIX: Use sed for first replacement
+    printf "%s" "$_str" | sed "s/$_pattern/$_replacement/"
+}
+
+# Replace all occurrences of pattern with replacement
+# Args: string, pattern, replacement
+# Prints: modified string
+string_replace_all() {
+    _str="${1:-}"
+    _pattern="${2:-}"
+    _replacement="${3:-}"
+    
+    [ -z "$_pattern" ] && printf "%s" "$_str" && return
+    
+    # POSIX: Use sed for global replacement
+    printf "%s" "$_str" | sed "s/$_pattern/$_replacement/g"
+}
+
+# Split string by delimiter (print each part on new line)
+# Args: string, delimiter
+# Prints: parts (one per line)
+string_split() {
+    _str="${1:-}"
+    _delim="${2:-,}"
+    
+    [ -z "$_str" ] && return
+    
+    # POSIX: Use tr to replace delimiter with newline
+    printf "%s" "$_str" | tr "$_delim" '\n'
+}
+
+# Join lines with delimiter
+# Args: delimiter
+# Reads: lines from stdin
+# Prints: joined string
+string_join() {
+    _delim="${1:-,}"
+    
+    # POSIX: Use awk to join lines
+    awk -v delim="$_delim" '
+        NR == 1 { printf "%s", $0; next }
+        { printf "%s%s", delim, $0 }
+        END { if (NR > 0) printf "\n" }
+    '
+}
+
+# Check if string is empty or whitespace only
+# Args: string
+# Returns: 0 if empty/whitespace, 1 otherwise
+string_is_empty() {
+    _str="${1:-}"
+    _trimmed=$(string_trim "$_str")
+    [ -z "$_trimmed" ]
+}
+
+# Repeat string N times
+# Args: string, count
+# Prints: repeated string
+string_repeat() {
+    _str="${1:-}"
+    _count="${2:-0}"
+    
+    # Validate count
+    case "$_count" in
+        ''|*[!0-9]*)
+            return 1
+            ;;
+    esac
+    
+    # POSIX: Use while loop
+    _i=0
+    while [ "$_i" -lt "$_count" ]; do
+        printf "%s" "$_str"
+        _i=$(expr "$_i" + 1)
+    done
+}
+
+# POSIX Compliance Notes:
+# - No ${var:pos:len} - use cut instead
+# - No ${var^^} or ${var,,} - use tr instead
+# - No [[ =~ ]] - use case or grep instead
+# - No ${#var} - use awk for length
+# - Use printf, not echo (more portable)
+# - All operations via POSIX utilities (tr, cut, sed, awk)
+# - Arithmetic with expr (POSIX-compliant)

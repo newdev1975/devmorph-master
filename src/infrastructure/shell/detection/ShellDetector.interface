@@ -1,0 +1,122 @@
+#!/bin/sh
+# ShellDetector.interface - POSIX-compliant shell detection
+# Single Responsibility: Shell identification only
+# POSIX Compliance: Works with dash, sh, bash, zsh, ksh
+
+# Detect current shell type
+# Returns: bash|zsh|dash|sh|ksh|powershell|unknown
+detect_shell_type() {
+    # Check PowerShell (Windows)
+    if [ -n "${PSVersionTable:-}" ]; then
+        printf "powershell"
+        return 0
+    fi
+    
+    # Check specific shell variables (POSIX-safe)
+    if [ -n "${BASH_VERSION:-}" ]; then
+        printf "bash"
+        return 0
+    fi
+    
+    if [ -n "${ZSH_VERSION:-}" ]; then
+        printf "zsh"
+        return 0
+    fi
+    
+    if [ -n "${KSH_VERSION:-}" ]; then
+        printf "ksh"
+        return 0
+    fi
+    
+    # Check process name via /proc (Linux-specific, POSIX fallback)
+    if [ -r /proc/$$/exe ]; then
+        _shell_path=$(readlink /proc/$$/exe 2>/dev/null || printf "")
+        case "$_shell_path" in
+            */dash)
+                printf "dash"
+                return 0
+                ;;
+            */bash)
+                printf "bash"
+                return 0
+                ;;
+            */zsh)
+                printf "zsh"
+                return 0
+                ;;
+            */ksh)
+                printf "ksh"
+                return 0
+                ;;
+        esac
+    fi
+    
+    # Fallback to SHELL variable
+    case "${SHELL:-}" in
+        */bash)
+            printf "bash"
+            ;;
+        */zsh)
+            printf "zsh"
+            ;;
+        */dash)
+            printf "dash"
+            ;;
+        */ksh)
+            printf "ksh"
+            ;;
+        */sh)
+            printf "sh"
+            ;;
+        *)
+            printf "unknown"
+            ;;
+    esac
+}
+
+# Check if shell is POSIX compatible
+# Returns: 0 if POSIX compatible, 1 otherwise
+is_posix_compatible() {
+    _shell=$(detect_shell_type)
+    case "$_shell" in
+        bash|dash|sh|zsh|ksh)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Check if shell supports arrays
+# Returns: 0 if supports, 1 otherwise
+# POSIX Note: Arrays are NOT POSIX, but detection is
+supports_arrays() {
+    _shell=$(detect_shell_type)
+    case "$_shell" in
+        bash|zsh|ksh)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Check if current environment has specific command
+# Args: command_name
+# Returns: 0 if command exists, 1 otherwise
+# POSIX: Use 'command -v' not 'which'
+has_command() {
+    _cmd="${1:-}"
+    [ -n "$_cmd" ] || return 1
+    command -v "$_cmd" >/dev/null 2>&1
+}
+
+# POSIX Compliance Notes:
+# - No [[ ]] - Use [ ] only
+# - No arrays for return values - use printf
+# - command -v instead of which (POSIX standard)
+# - Case statements for pattern matching
+# - No bashisms in detection logic
+# - Works on dash, sh, bash, zsh, ksh

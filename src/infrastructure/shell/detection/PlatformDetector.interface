@@ -1,0 +1,108 @@
+#!/bin/sh
+# PlatformDetector.interface - POSIX-compliant platform detection
+# Single Responsibility: Platform identification only
+# POSIX Compliance: Works with dash, sh, bash, zsh, ksh
+
+# Detect operating system
+# Returns: linux|darwin|windows|bsd|unknown
+# POSIX: No bashisms, pure sh
+detect_os() {
+    # POSIX: Use command substitution and case
+    _os_name=$(uname -s 2>/dev/null || printf "unknown")
+    
+    case "$_os_name" in
+        Linux*)
+            printf "linux"
+            ;;
+        Darwin*)
+            printf "darwin"
+            ;;
+        CYGWIN*|MINGW*|MSYS*)
+            printf "windows"
+            ;;
+        *BSD*|DragonFly*)
+            printf "bsd"
+            ;;
+        *)
+            printf "unknown"
+            ;;
+    esac
+}
+
+# Detect architecture
+# Returns: x86_64|arm64|i386|unknown
+# POSIX: Pure sh implementation
+detect_architecture() {
+    uname -m 2>/dev/null || printf "unknown"
+}
+
+# Check if Windows platform
+# Returns: 0 if Windows, 1 otherwise
+# POSIX: Use [ ] not [[ ]]
+is_windows() {
+    _current_os=$(detect_os)
+    [ "$_current_os" = "windows" ]
+}
+
+# Check if Unix-like platform
+# Returns: 0 if Unix-like, 1 otherwise
+# POSIX: Use case for pattern matching
+is_unix_like() {
+    _current_os=$(detect_os)
+    case "$_current_os" in
+        linux|darwin|bsd)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Check if running in WSL
+# Returns: 0 if WSL, 1 otherwise
+# POSIX: Careful with [ ] syntax
+is_wsl() {
+    # Check WSL_DISTRO_NAME variable
+    [ -n "${WSL_DISTRO_NAME:-}" ] && return 0
+    
+    # Check /proc/version if available
+    if [ -f /proc/version ]; then
+        if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# Get platform-specific path separator
+# Returns: / or \
+# POSIX: Simple, portable
+get_path_separator() {
+    if is_windows; then
+        printf "\\"
+    else
+        printf "/"
+    fi
+}
+
+# Get platform-specific line ending
+# Returns: CRLF or LF
+# POSIX: String output
+get_line_ending() {
+    if is_windows; then
+        printf "CRLF"
+    else
+        printf "LF"
+    fi
+}
+
+# POSIX Compliance Notes:
+# - No [[ ]] - Use [ ] only
+# - No $((arithmetic)) for strings - Use expr if needed
+# - No ${var^^} or ${var,,} - Use tr if needed
+# - printf instead of echo for portability
+# - Careful variable quoting: "$var" always
+# - Function-local variables prefixed with _
+# - No 'local' keyword (not POSIX)

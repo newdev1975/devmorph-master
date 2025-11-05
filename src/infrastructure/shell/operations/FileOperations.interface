@@ -1,0 +1,175 @@
+#!/bin/sh
+# FileOperations.interface - POSIX-compliant file operations
+# Single Responsibility: File system operations only
+# POSIX Compliance: Pure sh, no bashisms
+
+# Check if path exists
+# Args: path
+# Returns: 0 if exists, 1 otherwise
+path_exists() {
+    _path="${1:-}"
+    [ -n "$_path" ] && [ -e "$_path" ]
+}
+
+# Check if path is directory
+# Args: path
+# Returns: 0 if directory, 1 otherwise
+is_directory() {
+    _path="${1:-}"
+    [ -n "$_path" ] && [ -d "$_path" ]
+}
+
+# Check if path is file
+# Args: path
+# Returns: 0 if file, 1 otherwise
+is_file() {
+    _path="${1:-}"
+    [ -n "$_path" ] && [ -f "$_path" ]
+}
+
+# Check if path is readable
+# Args: path
+# Returns: 0 if readable, 1 otherwise
+is_readable() {
+    _path="${1:-}"
+    [ -n "$_path" ] && [ -r "$_path" ]
+}
+
+# Check if path is writable
+# Args: path
+# Returns: 0 if writable, 1 otherwise
+is_writable() {
+    _path="${1:-}"
+    [ -n "$_path" ] && [ -w "$_path" ]
+}
+
+# Create directory (with parents)
+# Args: path
+# Returns: 0 on success, 1 on failure
+safe_mkdir() {
+    _dir="${1:-}"
+    
+    # Validate input
+    if [ -z "$_dir" ]; then
+        return 1
+    fi
+    
+    # Already exists and is directory - success
+    if [ -d "$_dir" ]; then
+        return 0
+    fi
+    
+    # Create with parents
+    mkdir -p "$_dir" 2>/dev/null
+}
+
+# Remove file or directory safely
+# Args: path
+# Returns: 0 on success, 1 on failure
+safe_rm() {
+    _path="${1:-}"
+    
+    # Validate input
+    if [ -z "$_path" ]; then
+        return 1
+    fi
+    
+    # Already doesn't exist - success
+    if [ ! -e "$_path" ]; then
+        return 0
+    fi
+    
+    # Remove (works for both files and directories)
+    rm -rf "$_path" 2>/dev/null
+}
+
+# Copy file or directory
+# Args: source, destination
+# Returns: 0 on success, 1 on failure
+safe_cp() {
+    _src="${1:-}"
+    _dest="${2:-}"
+    
+    # Validate inputs
+    if [ -z "$_src" ] || [ -z "$_dest" ]; then
+        return 1
+    fi
+    
+    # Source must exist
+    if [ ! -e "$_src" ]; then
+        return 1
+    fi
+    
+    # Copy (recursive for directories)
+    if [ -d "$_src" ]; then
+        cp -r "$_src" "$_dest" 2>/dev/null
+    else
+        cp "$_src" "$_dest" 2>/dev/null
+    fi
+}
+
+# Move/rename file or directory
+# Args: source, destination
+# Returns: 0 on success, 1 on failure
+safe_mv() {
+    _src="${1:-}"
+    _dest="${2:-}"
+    
+    # Validate inputs
+    if [ -z "$_src" ] || [ -z "$_dest" ]; then
+        return 1
+    fi
+    
+    # Source must exist
+    if [ ! -e "$_src" ]; then
+        return 1
+    fi
+    
+    # Move
+    mv "$_src" "$_dest" 2>/dev/null
+}
+
+# Get absolute path (POSIX-compliant)
+# Args: path
+# Prints: absolute path
+get_absolute_path() {
+    _path="${1:-.}"
+    
+    # cd to directory and use pwd (most portable)
+    if [ -d "$_path" ]; then
+        (cd "$_path" && pwd)
+    elif [ -f "$_path" ]; then
+        _dir=$(dirname "$_path")
+        _file=$(basename "$_path")
+        _abs_dir=$(cd "$_dir" && pwd)
+        printf "%s/%s\n" "$_abs_dir" "$_file"
+    else
+        return 1
+    fi
+}
+
+# Get directory name (POSIX dirname)
+# Args: path
+# Prints: directory path
+get_dirname() {
+    _path="${1:-}"
+    [ -n "$_path" ] || return 1
+    dirname "$_path"
+}
+
+# Get base name (POSIX basename)
+# Args: path
+# Prints: base name
+get_basename() {
+    _path="${1:-}"
+    [ -n "$_path" ] || return 1
+    basename "$_path"
+}
+
+# POSIX Compliance Notes:
+# - All operations use standard POSIX utilities (mkdir, rm, cp, mv)
+# - No bashisms: no [[]], no +=, no arrays
+# - Error handling via return codes only
+# - Silent errors (2>/dev/null) for cleaner API
+# - Idempotent operations where possible
+# - Variable naming: _prefixed to avoid conflicts
