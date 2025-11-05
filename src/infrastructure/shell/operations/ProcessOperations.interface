@@ -1,0 +1,172 @@
+#!/bin/sh
+# ProcessOperations.interface - POSIX-compliant process operations
+# Single Responsibility: Process management only
+# POSIX Compliance: Pure sh, portable utilities
+
+# Execute command safely with error handling
+# Args: command, args...
+# Returns: command exit code
+# Stderr/Stdout: passed through
+safe_execute() {
+    # Execute command with all arguments
+    "$@"
+}
+
+# Execute command and capture output
+# Args: command, args...
+# Prints: command output (stdout only)
+# Returns: command exit code
+execute_capture() {
+    "$@" 2>/dev/null
+}
+
+# Execute command and capture both stdout and stderr
+# Args: command, args...
+# Prints: combined output
+# Returns: command exit code
+execute_capture_all() {
+    "$@" 2>&1
+}
+
+# Execute command with timeout (POSIX-compliant)
+# Args: timeout_seconds, command, args...
+# Returns: 124 if timeout, command exit code otherwise
+# Note: Requires timeout command (coreutils)
+execute_with_timeout() {
+    _timeout="${1:-10}"
+    shift
+    
+    # Check if timeout command exists
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$_timeout" "$@"
+    else
+        # Fallback: execute without timeout
+        "$@"
+    fi
+}
+
+# Get current process ID
+# Prints: PID
+get_current_pid() {
+    printf "%s\n" "$$"
+}
+
+# Get parent process ID
+# Prints: PPID
+get_parent_pid() {
+    printf "%s\n" "$PPID"
+}
+
+# Check if process is running
+# Args: PID
+# Returns: 0 if running, 1 otherwise
+is_process_running() {
+    _pid="${1:-}"
+    
+    [ -z "$_pid" ] && return 1
+    
+    # POSIX: Use kill -0 to check if process exists
+    kill -0 "$_pid" 2>/dev/null
+}
+
+# Send signal to process
+# Args: signal, PID
+# Returns: 0 on success, 1 on failure
+# Example: send_signal TERM 1234
+send_signal() {
+    _signal="${1:-TERM}"
+    _pid="${2:-}"
+    
+    [ -z "$_pid" ] && return 1
+    
+    # POSIX: kill command with signal
+    kill -"$_signal" "$_pid" 2>/dev/null
+}
+
+# Terminate process gracefully (SIGTERM)
+# Args: PID
+# Returns: 0 on success, 1 on failure
+terminate_process() {
+    _pid="${1:-}"
+    send_signal TERM "$_pid"
+}
+
+# Kill process forcefully (SIGKILL)
+# Args: PID
+# Returns: 0 on success, 1 on failure
+kill_process() {
+    _pid="${1:-}"
+    send_signal KILL "$_pid"
+}
+
+# Wait for process to finish
+# Args: PID, timeout_seconds (optional)
+# Returns: 0 if process finished, 1 if timeout
+wait_for_process() {
+    _pid="${1:-}"
+    _timeout="${2:-30}"
+    
+    [ -z "$_pid" ] && return 1
+    
+    _elapsed=0
+    while is_process_running "$_pid"; do
+        if [ "$_elapsed" -ge "$_timeout" ]; then
+            return 1  # Timeout
+        fi
+        sleep 1
+        _elapsed=$(expr "$_elapsed" + 1)
+    done
+    
+    return 0
+}
+
+# Get process exit code (must be child process)
+# Args: PID
+# Returns: exit code or 127 if not available
+get_process_exit_code() {
+    _pid="${1:-}"
+    
+    [ -z "$_pid" ] && return 127
+    
+    # POSIX: Use wait to get exit code
+    # Note: Only works for child processes
+    wait "$_pid" 2>/dev/null
+}
+
+# Run command in background
+# Args: command, args...
+# Prints: background PID
+run_background() {
+    # Execute in background and return PID
+    "$@" &
+    printf "%s\n" "$!"
+}
+
+# Check if command exists
+# Args: command_name
+# Returns: 0 if exists, 1 otherwise
+command_exists() {
+    _cmd="${1:-}"
+    [ -n "$_cmd" ] || return 1
+    command -v "$_cmd" >/dev/null 2>&1
+}
+
+# Get command path
+# Args: command_name
+# Prints: full path to command
+# Returns: 0 if found, 1 otherwise
+get_command_path() {
+    _cmd="${1:-}"
+    [ -n "$_cmd" ] || return 1
+    command -v "$_cmd" 2>/dev/null
+}
+
+# POSIX Compliance Notes:
+# - Use kill -0 for process check (POSIX)
+# - Use kill with signal names (POSIX)
+# - Use $$ for current PID, $PPID for parent (POSIX)
+# - Use $! for last background PID (POSIX)
+# - Use wait for child process exit codes (POSIX)
+# - Use command -v, not which (POSIX)
+# - All arithmetic with expr (POSIX)
+# - Sleep in 1-second increments (most portable)
