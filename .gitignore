@@ -1,0 +1,26 @@
+# Temporary files
+*.tmp
+*.log
+*.swp
+*~
+
+# Test artifacts
+tests/test-results/
+*.tap
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+vendor/
+node_modules/
+
+# Build artifacts
+dist/
+build/
