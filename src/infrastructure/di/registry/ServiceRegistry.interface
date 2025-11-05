@@ -1,0 +1,182 @@
+#!/bin/sh
+# ServiceRegistry.interface - Service registration storage
+# Single Responsibility: Store and retrieve service registrations
+# POSIX Compliance: File-based storage (no associative arrays)
+
+# Registry file format (pipe-delimited):
+# interface_name|implementation_path|lifetime|dependencies
+# Example:
+# Logger.interface|/path/to/Logger.impl|singleton|
+# UserService.interface|/path/to/UserService.impl|transient|Logger.interface,Database.interface
+
+# Initialize registry
+# Creates registry file if doesn't exist
+di_registry_init() {
+    # Use environment variable or default
+    DI_REGISTRY_FILE="${DI_REGISTRY_FILE:-${TMPDIR:-/tmp}/di_registry_$$}"
+    
+    # Create empty registry if doesn't exist
+    if [ ! -f "$DI_REGISTRY_FILE" ]; then
+        touch "$DI_REGISTRY_FILE" || return 1
+    fi
+    
+    return 0
+}
+
+# Register a service
+# Args: interface_name, implementation_path, lifetime, dependencies (comma-separated)
+# Returns: 0 on success, 1 on failure
+di_register() {
+    _interface="${1:-}"
+    _implementation="${2:-}"
+    _lifetime="${3:-transient}"
+    _dependencies="${4:-}"
+    
+    # Validate inputs
+    [ -z "$_interface" ] && return 1
+    [ -z "$_implementation" ] && return 1
+    
+    # Validate lifetime
+    case "$_lifetime" in
+        singleton|transient|scoped)
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+    
+    # Initialize registry if needed
+    di_registry_init || return 1
+    
+    # Check if already registered (update if exists)
+    if di_is_registered "$_interface"; then
+        # Remove old registration
+        _temp_file="${DI_REGISTRY_FILE}.tmp"
+        grep -v "^${_interface}|" "$DI_REGISTRY_FILE" > "$_temp_file" 2>/dev/null || true
+        mv "$_temp_file" "$DI_REGISTRY_FILE"
+    fi
+    
+    # Add new registration
+    printf "%s|%s|%s|%s\n" "$_interface" "$_implementation" "$_lifetime" "$_dependencies" >> "$DI_REGISTRY_FILE"
+    
+    return 0
+}
+
+# Check if service is registered
+# Args: interface_name
+# Returns: 0 if registered, 1 otherwise
+di_is_registered() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_registry_init || return 1
+    
+    # POSIX: Use grep to check existence
+    grep -q "^${_interface}|" "$DI_REGISTRY_FILE" 2>/dev/null
+}
+
+# Get implementation path for interface
+# Args: interface_name
+# Prints: implementation_path
+# Returns: 0 on success, 1 if not found
+di_get_implementation() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_registry_init || return 1
+    
+    # POSIX: Use grep and cut to extract field
+    _line=$(grep "^${_interface}|" "$DI_REGISTRY_FILE" 2>/dev/null | head -n 1)
+    
+    [ -z "$_line" ] && return 1
+    
+    # Extract implementation (field 2)
+    printf "%s" "$_line" | cut -d'|' -f2
+}
+
+# Get lifetime for interface
+# Args: interface_name
+# Prints: lifetime (singleton|transient|scoped)
+# Returns: 0 on success, 1 if not found
+di_get_lifetime() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_registry_init || return 1
+    
+    _line=$(grep "^${_interface}|" "$DI_REGISTRY_FILE" 2>/dev/null | head -n 1)
+    
+    [ -z "$_line" ] && return 1
+    
+    # Extract lifetime (field 3)
+    printf "%s" "$_line" | cut -d'|' -f3
+}
+
+# Get dependencies for interface
+# Args: interface_name
+# Prints: comma-separated dependencies
+# Returns: 0 on success, 1 if not found
+di_get_dependencies() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_registry_init || return 1
+    
+    _line=$(grep "^${_interface}|" "$DI_REGISTRY_FILE" 2>/dev/null | head -n 1)
+    
+    [ -z "$_line" ] && return 1
+    
+    # Extract dependencies (field 4)
+    printf "%s" "$_line" | cut -d'|' -f4
+}
+
+# Get all registered interfaces
+# Prints: one interface per line
+di_list_registered() {
+    di_registry_init || return 1
+    
+    # POSIX: Use cut to get first field
+    cut -d'|' -f1 "$DI_REGISTRY_FILE" 2>/dev/null
+}
+
+# Clear entire registry
+# Returns: 0 on success
+di_clear_registry() {
+    di_registry_init || return 1
+    
+    # Truncate file
+    : > "$DI_REGISTRY_FILE"
+    
+    return 0
+}
+
+# Unregister a service
+# Args: interface_name
+# Returns: 0 on success
+di_unregister() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_registry_init || return 1
+    
+    if di_is_registered "$_interface"; then
+        _temp_file="${DI_REGISTRY_FILE}.tmp"
+        grep -v "^${_interface}|" "$DI_REGISTRY_FILE" > "$_temp_file" 2>/dev/null || true
+        mv "$_temp_file" "$DI_REGISTRY_FILE"
+    fi
+    
+    return 0
+}
+
+# POSIX Compliance Notes:
+# - File-based storage (no associative arrays in POSIX)
+# - Pipe-delimited format (easy to parse with cut)
+# - grep for searching (POSIX standard)
+# - cut for field extraction (POSIX standard)
+# - Temp files in $TMPDIR or /tmp
+# - No bashisms: no [[]], no arrays, no +=
