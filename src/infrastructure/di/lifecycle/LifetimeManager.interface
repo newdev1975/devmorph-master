@@ -1,0 +1,150 @@
+#!/bin/sh
+# LifetimeManager.interface - Service instance lifetime management
+# Single Responsibility: Cache and retrieve service instances
+# POSIX Compliance: File-based singleton cache
+
+# Singleton cache format (pipe-delimited):
+# interface_name|instance_id|timestamp
+# Example:
+# Logger.interface|logger_instance_abc123|1699123456
+
+# Initialize singleton cache
+di_lifetime_init() {
+    DI_SINGLETON_CACHE="${DI_SINGLETON_CACHE:-${TMPDIR:-/tmp}/di_singletons_$$}"
+    
+    if [ ! -f "$DI_SINGLETON_CACHE" ]; then
+        touch "$DI_SINGLETON_CACHE" || return 1
+    fi
+    
+    return 0
+}
+
+# Cache a singleton instance
+# Args: interface_name, instance_id
+# Returns: 0 on success, 1 on failure
+di_cache_singleton() {
+    _interface="${1:-}"
+    _instance_id="${2:-}"
+    
+    [ -z "$_interface" ] && return 1
+    [ -z "$_instance_id" ] && return 1
+    
+    di_lifetime_init || return 1
+    
+    # Remove old instance if exists
+    if di_has_singleton "$_interface"; then
+        _temp_file="${DI_SINGLETON_CACHE}.tmp"
+        grep -v "^${_interface}|" "$DI_SINGLETON_CACHE" > "$_temp_file" 2>/dev/null || true
+        mv "$_temp_file" "$DI_SINGLETON_CACHE"
+    fi
+    
+    # Add new instance with timestamp
+    _timestamp=$(date +%s 2>/dev/null || printf "0")
+    printf "%s|%s|%s\n" "$_interface" "$_instance_id" "$_timestamp" >> "$DI_SINGLETON_CACHE"
+    
+    return 0
+}
+
+# Get cached singleton instance
+# Args: interface_name
+# Prints: instance_id
+# Returns: 0 on success, 1 if not cached
+di_get_singleton() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_lifetime_init || return 1
+    
+    _line=$(grep "^${_interface}|" "$DI_SINGLETON_CACHE" 2>/dev/null | head -n 1)
+    
+    [ -z "$_line" ] && return 1
+    
+    # Extract instance_id (field 2)
+    printf "%s" "$_line" | cut -d'|' -f2
+}
+
+# Check if singleton is cached
+# Args: interface_name
+# Returns: 0 if cached, 1 otherwise
+di_has_singleton() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_lifetime_init || return 1
+    
+    grep -q "^${_interface}|" "$DI_SINGLETON_CACHE" 2>/dev/null
+}
+
+# Remove singleton from cache
+# Args: interface_name
+# Returns: 0 on success
+di_remove_singleton() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_lifetime_init || return 1
+    
+    if di_has_singleton "$_interface"; then
+        _temp_file="${DI_SINGLETON_CACHE}.tmp"
+        grep -v "^${_interface}|" "$DI_SINGLETON_CACHE" > "$_temp_file" 2>/dev/null || true
+        mv "$_temp_file" "$DI_SINGLETON_CACHE"
+    fi
+    
+    return 0
+}
+
+# Clear all singletons
+# Returns: 0 on success
+di_clear_singletons() {
+    di_lifetime_init || return 1
+    
+    : > "$DI_SINGLETON_CACHE"
+    
+    return 0
+}
+
+# Get all cached singletons
+# Prints: one interface per line
+di_list_singletons() {
+    di_lifetime_init || return 1
+    
+    cut -d'|' -f1 "$DI_SINGLETON_CACHE" 2>/dev/null
+}
+
+# Get singleton age in seconds
+# Args: interface_name
+# Prints: age in seconds
+# Returns: 0 on success, 1 if not found
+di_get_singleton_age() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_lifetime_init || return 1
+    
+    _line=$(grep "^${_interface}|" "$DI_SINGLETON_CACHE" 2>/dev/null | head -n 1)
+    
+    [ -z "$_line" ] && return 1
+    
+    # Extract timestamp (field 3)
+    _cached_time=$(printf "%s" "$_line" | cut -d'|' -f3)
+    _current_time=$(date +%s 2>/dev/null || printf "0")
+    
+    # POSIX arithmetic
+    expr "$_current_time" - "$_cached_time" 2>/dev/null || printf "0"
+}
+
+# POSIX Compliance Notes:
+# - File-based singleton cache
+# - Pipe-delimited format
+# - Uses grep, cut for parsing
+# - Timestamp for debugging/monitoring
+# - No bashisms
+
+# Lifetime Strategies:
+# - Singleton: Cached here, returned on subsequent resolves
+# - Transient: NOT cached, new instance every time
+# - Scoped: Cached per scope (future enhancement)
