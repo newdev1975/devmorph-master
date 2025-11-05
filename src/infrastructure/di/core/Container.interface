@@ -1,0 +1,231 @@
+#!/bin/sh
+# Container.interface - DI Container Facade (Main Public API)
+# Single Responsibility: Provide simple, unified API for DI operations
+# Design Pattern: Facade (simplifies complex subsystem)
+
+# Source all DI components
+_di_core_dir=$(dirname "$0")
+. "${_di_core_dir}/../registry/ServiceRegistry.interface"
+. "${_di_core_dir}/../lifecycle/LifetimeManager.interface"
+. "${_di_core_dir}/../resolver/DependencyResolver.interface"
+
+# Container state
+DI_CONTAINER_INITIALIZED=0
+
+# Initialize DI Container
+# Returns: 0 on success, 1 on failure
+di_init() {
+    # Initialize all subsystems
+    di_registry_init || return 1
+    di_lifetime_init || return 1
+    di_resolver_init || return 1
+    
+    DI_CONTAINER_INITIALIZED=1
+    
+    return 0
+}
+
+# Check if container is initialized
+# Returns: 0 if initialized, 1 otherwise
+di_is_initialized() {
+    [ "$DI_CONTAINER_INITIALIZED" = "1" ]
+}
+
+# Register service with container
+# Args: interface_name, implementation_path, lifetime (optional, default: transient)
+# Returns: 0 on success, 1 on failure
+# Example: di_container_register "Logger.interface" "/path/to/Logger.impl" "singleton"
+di_container_register() {
+    _interface="${1:-}"
+    _implementation="${2:-}"
+    _lifetime="${3:-transient}"
+    
+    # Validate inputs
+    [ -z "$_interface" ] && {
+        printf "ERROR: Interface name required\n" >&2
+        return 1
+    }
+    
+    [ -z "$_implementation" ] && {
+        printf "ERROR: Implementation path required\n" >&2
+        return 1
+    }
+    
+    # Auto-initialize if needed
+    di_is_initialized || di_init || return 1
+    
+    # Register service
+    di_register "$_interface" "$_implementation" "$_lifetime" "" || {
+        printf "ERROR: Failed to register service: %s\n" "$_interface" >&2
+        return 1
+    }
+    
+    return 0
+}
+
+# Register service with dependencies
+# Args: interface_name, implementation_path, lifetime, dependencies (comma-separated)
+# Returns: 0 on success, 1 on failure
+# Example: di_container_register_with_deps "UserService.interface" "/path/to/UserService.impl" "transient" "Logger.interface,Database.interface"
+di_container_register_with_deps() {
+    _interface="${1:-}"
+    _implementation="${2:-}"
+    _lifetime="${3:-transient}"
+    _dependencies="${4:-}"
+    
+    # Validate inputs
+    [ -z "$_interface" ] && return 1
+    [ -z "$_implementation" ] && return 1
+    
+    # Auto-initialize if needed
+    di_is_initialized || di_init || return 1
+    
+    # Register with dependencies
+    di_register "$_interface" "$_implementation" "$_lifetime" "$_dependencies" || return 1
+    
+    return 0
+}
+
+# Resolve service from container
+# Args: interface_name
+# Prints: instance_id
+# Returns: 0 on success, 1 on failure
+# Example: logger_instance=$(di_container_resolve "Logger.interface")
+di_container_resolve() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && {
+        printf "ERROR: Interface name required\n" >&2
+        return 1
+    }
+    
+    # Auto-initialize if needed
+    di_is_initialized || di_init || return 1
+    
+    # Resolve service
+    di_resolve "$_interface" || {
+        printf "ERROR: Failed to resolve service: %s\n" "$_interface" >&2
+        return 1
+    }
+}
+
+# Check if service is registered
+# Args: interface_name
+# Returns: 0 if registered, 1 otherwise
+di_container_has() {
+    _interface="${1:-}"
+    
+    [ -z "$_interface" ] && return 1
+    
+    di_is_initialized || return 1
+    
+    di_is_registered "$_interface"
+}
+
+# Get all registered services
+# Prints: one interface per line
+di_container_list() {
+    di_is_initialized || return 1
+    
+    di_list_registered
+}
+
+# Get container statistics
+# Prints: formatted statistics
+di_container_stats() {
+    di_is_initialized || {
+        printf "Container not initialized\n"
+        return 1
+    }
+    
+    _registered_count=$(di_list_registered | wc -l)
+    _singleton_count=$(di_list_singletons | wc -l)
+    
+    printf "DI Container Statistics:\n"
+    printf "  Registered services: %s\n" "$_registered_count"
+    printf "  Cached singletons:   %s\n" "$_singleton_count"
+    
+    return 0
+}
+
+# Clear all singleton instances (keep registrations)
+# Returns: 0 on success
+di_container_clear_cache() {
+    di_is_initialized || return 1
+    
+    di_clear_singletons
+}
+
+# Reset entire container (clear registrations and cache)
+# Returns: 0 on success
+di_container_reset() {
+    di_is_initialized || return 1
+    
+    di_clear_registry
+    di_clear_singletons
+    di_stack_clear
+    
+    return 0
+}
+
+# Dispose container (cleanup all resources)
+# Returns: 0 on success
+di_dispose() {
+    if ! di_is_initialized; then
+        return 0
+    fi
+    
+    # Clear all data
+    di_container_reset
+    
+    # Remove temp files if they exist
+    [ -n "${DI_REGISTRY_FILE:-}" ] && [ -f "$DI_REGISTRY_FILE" ] && rm -f "$DI_REGISTRY_FILE"
+    [ -n "${DI_SINGLETON_CACHE:-}" ] && [ -f "$DI_SINGLETON_CACHE" ] && rm -f "$DI_SINGLETON_CACHE"
+    [ -n "${DI_RESOLUTION_STACK:-}" ] && [ -f "$DI_RESOLUTION_STACK" ] && rm -f "$DI_RESOLUTION_STACK"
+    
+    DI_CONTAINER_INITIALIZED=0
+    
+    return 0
+}
+
+# Register cleanup on exit
+trap 'di_dispose' EXIT INT TERM
+
+# Convenience aliases for shorter names
+alias di_reg='di_container_register'
+alias di_reg_deps='di_container_register_with_deps'
+alias di_get='di_container_resolve'
+
+# DESIGN PATTERNS:
+# - Facade: Simplifies complex DI subsystem
+# - Singleton: Container itself is singleton per process
+# - Factory: Creates service instances
+# - Strategy: Lifetime strategies (singleton/transient/scoped)
+# - Dependency Injection: Core pattern
+
+# PUBLIC API SUMMARY:
+# - di_init()                    : Initialize container
+# - di_container_register()      : Register service
+# - di_container_register_with_deps() : Register with dependencies
+# - di_container_resolve()       : Resolve service
+# - di_container_has()           : Check registration
+# - di_container_list()          : List all services
+# - di_container_stats()         : Get statistics
+# - di_container_clear_cache()   : Clear singleton cache
+# - di_container_reset()         : Reset container
+# - di_dispose()                 : Cleanup and dispose
+
+# USAGE EXAMPLE:
+# # Initialize
+# di_init
+#
+# # Register services
+# di_container_register "Logger.interface" "./Logger.impl" "singleton"
+# di_container_register_with_deps "UserService.interface" "./UserService.impl" "transient" "Logger.interface"
+#
+# # Resolve services
+# logger=$(di_container_resolve "Logger.interface")
+# user_service=$(di_container_resolve "UserService.interface")
+#
+# # Cleanup
+# di_dispose
