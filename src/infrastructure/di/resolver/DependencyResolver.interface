@@ -1,0 +1,167 @@
+#!/bin/sh
+# DependencyResolver.interface - Dependency resolution with circular detection
+# Single Responsibility: Resolve service dependencies
+# POSIX Compliance: File-based resolution stack
+
+# FIX: Get absolute path to this script's directory
+if [ -n "${BASH_SOURCE:-}" ]; then
+    _di_resolver_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _di_resolver_dir="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+else
+    _di_resolver_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || _di_resolver_dir="."
+fi
+
+# Source dependencies with absolute paths
+. "${_di_resolver_dir}/../registry/ServiceRegistry.interface"
+. "${_di_resolver_dir}/../lifecycle/LifetimeManager.interface"
+
+# ... rest of the file stays the same ...
+# (copy all the functions from the previous version)
+
+# Initialize resolution stack
+di_resolver_init() {
+    DI_RESOLUTION_STACK="${DI_RESOLUTION_STACK:-${TMPDIR:-/tmp}/di_stack_$$}"
+    
+    if [ ! -f "$DI_RESOLUTION_STACK" ]; then
+        touch "$DI_RESOLUTION_STACK" || return 1
+    fi
+    
+    return 0
+}
+
+di_stack_push() {
+    _interface="${1:-}"
+    [ -z "$_interface" ] && return 1
+    di_resolver_init || return 1
+    printf "%s\n" "$_interface" >> "$DI_RESOLUTION_STACK"
+}
+
+di_stack_pop() {
+    di_resolver_init || return 1
+    _temp_file="${DI_RESOLUTION_STACK}.tmp"
+    sed '$d' "$DI_RESOLUTION_STACK" > "$_temp_file" 2>/dev/null || true
+    mv "$_temp_file" "$DI_RESOLUTION_STACK"
+}
+
+di_stack_contains() {
+    _interface="${1:-}"
+    [ -z "$_interface" ] && return 1
+    di_resolver_init || return 1
+    grep -q "^${_interface}$" "$DI_RESOLUTION_STACK" 2>/dev/null
+}
+
+di_stack_clear() {
+    di_resolver_init || return 1
+    : > "$DI_RESOLUTION_STACK"
+}
+
+di_stack_trace() {
+    di_resolver_init || return 1
+    cat "$DI_RESOLUTION_STACK" 2>/dev/null
+}
+
+di_resolve() {
+    _interface="${1:-}"
+    [ -z "$_interface" ] && return 1
+    
+    if ! di_is_registered "$_interface"; then
+        printf "ERROR: Service not registered: %s\n" "$_interface" >&2
+        return 1
+    fi
+    
+    _lifetime=$(di_get_lifetime "$_interface")
+    
+    if [ "$_lifetime" = "singleton" ]; then
+        if di_has_singleton "$_interface"; then
+            di_get_singleton "$_interface"
+            return 0
+        fi
+    fi
+    
+    _instance=$(di_resolve_with_deps "$_interface") || return 1
+    
+    if [ "$_lifetime" = "singleton" ]; then
+        di_cache_singleton "$_interface" "$_instance" || return 1
+    fi
+    
+    printf "%s" "$_instance"
+    return 0
+}
+
+di_resolve_with_deps() {
+    _interface="${1:-}"
+    
+    if di_stack_contains "$_interface"; then
+        printf "ERROR: Circular dependency detected:\n" >&2
+        di_stack_trace >&2
+        printf "  -> %s\n" "$_interface" >&2
+        return 1
+    fi
+    
+    di_stack_push "$_interface"
+    
+    _deps=$(di_get_dependencies "$_interface")
+    
+    _resolved_deps=""
+    if [ -n "$_deps" ]; then
+        _old_ifs="$IFS"
+        IFS=','
+        for _dep in $_deps; do
+            _dep=$(printf "%s" "$_dep" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            
+            _dep_instance=$(di_resolve "$_dep") || {
+                di_stack_pop
+                return 1
+            }
+            
+            if [ -z "$_resolved_deps" ]; then
+                _resolved_deps="$_dep_instance"
+            else
+                _resolved_deps="${_resolved_deps},${_dep_instance}"
+            fi
+        done
+        IFS="$_old_ifs"
+    fi
+    
+    _implementation=$(di_get_implementation "$_interface")
+    
+    _instance=$(di_create_instance "$_implementation" "$_resolved_deps") || {
+        di_stack_pop
+        return 1
+    }
+    
+    di_stack_pop
+    
+    printf "%s" "$_instance"
+    return 0
+}
+
+di_create_instance() {
+    _impl_path="${1:-}"
+    _deps="${2:-}"
+    
+    [ -z "$_impl_path" ] && return 1
+    
+    _instance_id="instance_$(date +%s%N 2>/dev/null || printf "%s" "$$")_$$_$RANDOM"
+    
+    if [ -f "$_impl_path" ]; then
+        . "$_impl_path" || {
+            printf "ERROR: Failed to source implementation: %s\n" "$_impl_path" >&2
+            return 1
+        }
+    else
+        printf "ERROR: Implementation not found: %s\n" "$_impl_path" >&2
+        return 1
+    fi
+    
+    _class_name=$(basename "$_impl_path" .impl | sed 's/\./_/g')
+    _constructor="init_${_class_name}"
+    
+    if command -v "$_constructor" >/dev/null 2>&1; then
+        "$_constructor" "$_instance_id" "$_deps" || return 1
+    fi
+    
+    printf "%s" "$_instance_id"
+    return 0
+}
