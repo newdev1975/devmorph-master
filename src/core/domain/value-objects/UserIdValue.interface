@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# UserIdValue.interface - ONLY user ID value object contract
+# Description: User ID value object for user identity
+# SINGLE RESPONSIBILITY: Define user ID value object interface
+
+# Create user ID value object
+# Parameters: $1 - user ID string
+# Returns: user ID value object JSON via stdout, 0=success, 1=failure
+entity_user_id_create() {
+    # Interface - no implementation
+    :
+}
+
+# Validate user ID value object
+# Parameters: $1 - user ID value object JSON
+# Returns: 0=valid, 1=invalid
+entity_user_id_validate() {
+    # Interface - no implementation
+    :
+}
+
+# Get user ID string from value object
+# Parameters: $1 - user ID value object JSON
+# Returns: user ID string via stdout, 0=success, 1=failure
+entity_user_id_get_value() {
+    # Interface - no implementation
+    :
+}

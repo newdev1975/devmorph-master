@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# User.interface - ONLY user domain entity contract
+# Description: User domain entity for identity management
+# SINGLE RESPONSIBILITY: Define user entity interface
+
+# Create user entity
+# Parameters: $1 - user ID, $2 - username, $3 - email
+# Returns: user entity JSON via stdout, 0=success, 1=failure
+entity_user_create() {
+    # Interface - no implementation
+    :
+}
+
+# Get user ID from entity
+# Parameters: $1 - user entity JSON
+# Returns: user ID via stdout, 0=success, 1=failure
+entity_user_get_id() {
+    # Interface - no implementation
+    :
+}
+
+# Validate user entity
+# Parameters: $1 - user entity JSON
+# Returns: 0=valid, 1=invalid
+entity_user_validate() {
+    # Interface - no implementation
+    :
+}

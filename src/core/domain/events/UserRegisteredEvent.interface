@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# UserRegisteredEvent.interface - ONLY user registered event contract
+# Description: User registered domain event
+# SINGLE RESPONSIBILITY: Define user registered event interface
+
+# Create user registered event
+# Parameters: $1 - user entity JSON
+# Returns: event JSON via stdout, 0=success, 1=failure
+event_user_registered_create() {
+    # Interface - no implementation
+    :
+}
+
+# Get user from event
+# Parameters: $1 - event JSON
+# Returns: user entity JSON via stdout, 0=success, 1=failure
+event_user_registered_get_user() {
+    # Interface - no implementation
+    :
+}

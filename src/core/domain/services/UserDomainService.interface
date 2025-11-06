@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# UserDomainService.interface - ONLY user domain service contract
+# Description: User domain service for business logic
+# SINGLE RESPONSIBILITY: Define user domain service interface
+
+# Register new user
+# Parameters: $1 - username, $2 - email
+# Returns: user entity JSON via stdout, 0=success, 1=failure, 2=user exists
+service_user_register() {
+    # Interface - no implementation
+    :
+}
+
+# Update user profile
+# Parameters: $1 - user entity JSON
+# Returns: 0=success, 1=failure
+service_user_update_profile() {
+    # Interface - no implementation
+    :
+}
