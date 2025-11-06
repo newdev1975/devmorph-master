@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# UserModule.interface - ONLY user module contract
+# Description: User module interface for organizing user-related functionality
+# SINGLE RESPONSIBILITY: Define user module interface
+
+# Initialize user module
+# Parameters: $1 - module configuration
+# Returns: 0=success, 1=failure
+module_user_init() {
+    # Interface - no implementation
+    :
+}
+
+# Register module services in container
+# Parameters: $1 - DI container identifier
+# Returns: 0=success, 1=failure
+module_user_register_services() {
+    # Interface - no implementation
+    :
+}
+
+# Activate module
+# Parameters: $1 - module configuration
+# Returns: 0=success, 1=failure
+module_user_activate() {
+    # Interface - no implementation
+    :
+}

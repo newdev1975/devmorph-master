@@ -1,0 +1,50 @@
+#!/usr/bin/env sh
+# ContainerImpl.interface - ONLY dependency injection container implementation contract
+# Description: DI container implementation interface for managing dependencies
+# SINGLE RESPONSIBILITY: Define DI container implementation interface
+
+# Initialize DI container implementation
+# Returns: 0=success, 1=failure
+init_ContainerImpl() {
+    # Interface - no implementation
+    :
+}
+
+# Register service in container implementation
+# Parameters: $1 - interface name, $2 - implementation file path, $3 - lifecycle (singleton/transient)
+# Returns: 0=success, 1=failure
+container_impl_register() {
+    # Interface - no implementation
+    :
+}
+
+# Register service with dependencies implementation
+# Parameters: $1 - interface name, $2 - implementation file path, $3 - lifecycle, $4 - dependencies (comma-separated)
+# Returns: 0=success, 1=failure
+container_impl_register_with_deps() {
+    # Interface - no implementation
+    :
+}
+
+# Resolve service from container implementation
+# Parameters: $1 - interface name
+# Returns: service instance identifier via stdout, 0=success, 1=failure
+container_impl_resolve() {
+    # Interface - no implementation
+    :
+}
+
+# Check if service is registered implementation
+# Parameters: $1 - interface name
+# Returns: 0=registered, 1=not registered
+container_impl_has() {
+    # Interface - no implementation
+    :
+}
+
+# Get container statistics implementation
+# Returns: statistics text via stdout, 0=success, 1=failure
+container_impl_stats() {
+    # Interface - no implementation
+    :
+}

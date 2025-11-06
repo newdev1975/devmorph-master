@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# ValidationPlugin.interface - ONLY validation plugin contract
+# Description: Validation plugin interface for data validation
+# SINGLE RESPONSIBILITY: Define validation plugin interface
+
+# Create validation plugin
+# Parameters: $1 - plugin configuration
+# Returns: plugin identifier via stdout, 0=success, 1=failure
+plugin_validation_create() {
+    # Interface - no implementation
+    :
+}
+
+# Validate data with plugin
+# Parameters: $1 - plugin identifier, $2 - data to validate, $3 - validation rules
+# Returns: validation result JSON via stdout, 0=valid, 1=invalid, 2=failure
+plugin_validation_validate() {
+    # Interface - no implementation
+    :
+}
+
+# Register validation rule
+# Parameters: $1 - plugin identifier, $2 - rule name, $3 - validation function
+# Returns: 0=success, 1=failure
+plugin_validation_register_rule() {
+    # Interface - no implementation
+    :
+}
