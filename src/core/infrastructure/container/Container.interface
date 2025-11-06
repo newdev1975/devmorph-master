@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+# Container.interface - ONLY dependency injection container contract
+# Description: DI container interface for managing dependencies
+# SINGLE RESPONSIBILITY: Define dependency injection container interface
+
+# Initialize DI container
+# Returns: 0=success, 1=failure
+di_container_init() {
+    # Interface - no implementation
+    :
+}
+
+# Register service in container
+# Parameters: $1 - interface name, $2 - implementation file path, $3 - lifecycle (singleton/transient)
+# Returns: 0=success, 1=failure
+di_container_register() {
+    # Interface - no implementation
+    :
+}
+
+# Register service with dependencies
+# Parameters: $1 - interface name, $2 - implementation file path, $3 - lifecycle, $4 - dependencies (comma-separated)
+# Returns: 0=success, 1=failure
+di_container_register_with_deps() {
+    # Interface - no implementation
+    :
+}
+
+# Resolve service from container
+# Parameters: $1 - interface name
+# Returns: service instance identifier via stdout, 0=success, 1=failure
+di_container_resolve() {
+    # Interface - no implementation
+    :
+}

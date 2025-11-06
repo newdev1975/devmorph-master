@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# EventPublisher.interface - ONLY event publisher contract
+# Description: Event publisher interface for domain event handling
+# SINGLE RESPONSIBILITY: Define event publisher interface
+
+# Create event publisher
+# Parameters: $1 - publisher configuration
+# Returns: publisher identifier via stdout, 0=success, 1=failure
+messaging_publisher_create() {
+    # Interface - no implementation
+    :
+}
+
+# Publish event
+# Parameters: $1 - publisher identifier, $2 - event JSON
+# Returns: 0=success, 1=failure
+messaging_publisher_publish() {
+    # Interface - no implementation
+    :
+}
+
+# Subscribe to event
+# Parameters: $1 - publisher identifier, $2 - event type, $3 - handler function
+# Returns: 0=success, 1=failure
+messaging_publisher_subscribe() {
+    # Interface - no implementation
+    :
+}
