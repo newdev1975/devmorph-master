@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+# MessagingAdapter.interface - ONLY messaging adapter contract
+# Description: Messaging adapter interface for message queue operations
+# SINGLE RESPONSIBILITY: Define messaging adapter interface
+
+# Create messaging adapter instance
+# Parameters: $1 - messaging system type, $2 - connection parameters
+# Returns: adapter identifier via stdout, 0=success, 1=failure
+adapter_messaging_create() {
+    # Interface - no implementation
+    :
+}
+
+# Send message
+# Parameters: $1 - adapter identifier, $2 - queue/topic name, $3 - message content
+# Returns: 0=success, 1=failure
+adapter_messaging_send() {
+    # Interface - no implementation
+    :
+}
+
+# Receive message
+# Parameters: $1 - adapter identifier, $2 - queue/topic name
+# Returns: message content via stdout, 0=success, 1=no message, 2=failure
+adapter_messaging_receive() {
+    # Interface - no implementation
+    :
+}
+
+# Subscribe to topic
+# Parameters: $1 - adapter identifier, $2 - topic name, $3 - callback function
+# Returns: 0=success, 1=failure
+adapter_messaging_subscribe() {
+    # Interface - no implementation
+    :
+}

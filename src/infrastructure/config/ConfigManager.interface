@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+# ConfigManager.interface - ONLY configuration manager contract
+# Description: Configuration manager interface for application settings
+# SINGLE RESPONSIBILITY: Define configuration manager interface
+
+# Initialize configuration manager
+# Parameters: $1 - config file path
+# Returns: 0=success, 1=failure
+config_manager_init() {
+    # Interface - no implementation
+    :
+}
+
+# Get configuration value
+# Parameters: $1 - key
+# Returns: value via stdout, 0=success, 1=not found, 2=failure
+config_manager_get() {
+    # Interface - no implementation
+    :
+}
+
+# Set configuration value
+# Parameters: $1 - key, $2 - value
+# Returns: 0=success, 1=failure
+config_manager_set() {
+    # Interface - no implementation
+    :
+}
+
+# Load configuration from file
+# Parameters: $1 - file path
+# Returns: 0=success, 1=file not found, 2=failure
+config_manager_load() {
+    # Interface - no implementation
+    :
+}
+
+# Save configuration to file
+# Parameters: $1 - file path
+# Returns: 0=success, 1=failure
+config_manager_save() {
+    # Interface - no implementation
+    :
+}

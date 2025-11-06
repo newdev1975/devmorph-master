@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+# SecurityManager.interface - ONLY security manager contract
+# Description: Security manager interface for application security
+# SINGLE RESPONSIBILITY: Define security manager interface
+
+# Initialize security manager
+# Parameters: $1 - security configuration
+# Returns: 0=success, 1=failure
+security_manager_init() {
+    # Interface - no implementation
+    :
+}
+
+# Authenticate user
+# Parameters: $1 - username, $2 - password
+# Returns: user ID via stdout, 0=success, 1=authentication failed, 2=failure
+security_manager_authenticate() {
+    # Interface - no implementation
+    :
+}
+
+# Authorize user for operation
+# Parameters: $1 - user ID, $2 - operation
+# Returns: 0=authorized, 1=not authorized, 2=failure
+security_manager_authorize() {
+    # Interface - no implementation
+    :
+}
+
+# Hash password
+# Parameters: $1 - password
+# Returns: hashed password via stdout, 0=success, 1=failure
+security_manager_hash_password() {
+    # Interface - no implementation
+    :
+}
+
+# Verify password
+# Parameters: $1 - password, $2 - hash
+# Returns: 0=valid, 1=invalid, 2=failure
+security_manager_verify_password() {
+    # Interface - no implementation
+    :
+}

@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+# ShellAdapter.interface - ONLY shell adapter contract
+# Description: Shell adapter interface for shell abstraction integration
+# SINGLE RESPONSIBILITY: Define shell adapter interface
+
+# Create shell adapter instance
+# Parameters: $1 - adapter configuration
+# Returns: adapter identifier via stdout, 0=success, 1=failure
+adapter_shell_create() {
+    # Interface - no implementation
+    :
+}
+
+# Execute shell command
+# Parameters: $1 - adapter identifier, $2 - command string
+# Returns: command output via stdout, 0=success, 1=failure
+adapter_shell_execute() {
+    # Interface - no implementation
+    :
+}
+
+# Check command exit status
+# Parameters: $1 - adapter identifier, $2 - command output
+# Returns: exit status via stdout, 0=success, 1=failure
+adapter_shell_check_status() {
+    # Interface - no implementation
+    :
+}
+
+# Get command environment
+# Parameters: $1 - adapter identifier
+# Returns: environment variables JSON via stdout, 0=success, 1=failure
+adapter_shell_get_env() {
+    # Interface - no implementation
+    :
+}
