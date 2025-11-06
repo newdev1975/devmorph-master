@@ -213,19 +213,19 @@ teardown() {
 }
 
 @test "Integration: Should reset entire container" {
-    # Register services
     di_container_register "Logger.interface" "$TEST_DIR/Logger.impl" "singleton"
     di_container_register "Database.interface" "$TEST_DIR/Database.impl" "singleton"
     
-    # Reset
     di_container_reset
     
-    # Should no longer be registered
-    di_container_has "Logger.interface"
-    [ $? -ne 0 ]
+    # FIX: Use explicit if checks
+    if di_container_has "Logger.interface"; then
+        return 1
+    fi
     
-    di_container_has "Database.interface"
-    [ $? -ne 0 ]
+    if di_container_has "Database.interface"; then
+        return 1
+    fi
 }
 
 @test "Integration: Should handle missing implementation gracefully" {
