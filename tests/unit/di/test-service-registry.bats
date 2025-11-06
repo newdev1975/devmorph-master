@@ -1,23 +1,18 @@
 #!/usr/bin/env bats
 
 setup() {
-    # Source DI components (will be created)
     export DI_REGISTRY_FILE="${BATS_TEST_TMPDIR}/di_registry_$$"
     . "${BATS_TEST_DIRNAME}/../../../src/infrastructure/di/registry/ServiceRegistry.interface"
 }
 
 teardown() {
-    # Cleanup
     rm -f "$DI_REGISTRY_FILE"
 }
 
 @test "Should register service (POSIX)" {
     di_register "Logger.interface" "Logger.impl" "singleton" ""
     
-    # Check registration succeeded
     [ $? -eq 0 ]
-    
-    # Verify registry file exists
     [ -f "$DI_REGISTRY_FILE" ]
 }
 
@@ -27,8 +22,10 @@ teardown() {
     di_is_registered "Logger.interface"
     [ $? -eq 0 ]
     
-    di_is_registered "NonExistent.interface"
-    [ $? -ne 0 ]
+    # FIX: Explicitly check for non-zero return
+    if di_is_registered "NonExistent.interface"; then
+        return 1  # Should NOT be registered, so fail test
+    fi
 }
 
 @test "Should get service info (POSIX)" {
@@ -54,6 +51,8 @@ teardown() {
     
     di_clear_registry
     
-    di_is_registered "Logger.interface"
-    [ $? -ne 0 ]
+    # FIX: Explicitly check for non-zero return
+    if di_is_registered "Logger.interface"; then
+        return 1  # Should NOT be registered after clear
+    fi
 }

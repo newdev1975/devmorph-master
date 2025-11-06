@@ -10,7 +10,6 @@ teardown() {
 }
 
 @test "Should cache singleton instances (POSIX)" {
-    # Simulate instance creation
     di_cache_singleton "Logger.interface" "logger_instance_123"
     
     [ $? -eq 0 ]
@@ -29,8 +28,10 @@ teardown() {
     di_has_singleton "Logger.interface"
     [ $? -eq 0 ]
     
-    di_has_singleton "NonExistent.interface"
-    [ $? -ne 0 ]
+    # FIX: Explicitly check for non-zero return
+    if di_has_singleton "NonExistent.interface"; then
+        return 1  # Should NOT be cached
+    fi
 }
 
 @test "Should clear singleton cache (POSIX)" {
@@ -38,6 +39,8 @@ teardown() {
     
     di_clear_singletons
     
-    di_has_singleton "Logger.interface"
-    [ $? -ne 0 ]
+    # FIX: Explicitly check for non-zero return
+    if di_has_singleton "Logger.interface"; then
+        return 1  # Should NOT be cached after clear
+    fi
 }
