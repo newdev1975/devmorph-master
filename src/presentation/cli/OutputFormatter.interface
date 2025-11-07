@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+# OutputFormatter.interface - ONLY CLI output formatter contract
+# Description: CLI output formatter interface for result formatting
+# SINGLE RESPONSIBILITY: Define CLI output formatter interface
+
+# Create output formatter
+# Parameters: $1 - format type (json, text, table)
+# Returns: formatter identifier via stdout, 0=success, 1=failure
+cli_formatter_create() {
+    # Interface - no implementation
+    :
+}
+
+# Format output as text
+# Parameters: $1 - formatter identifier, $2 - data JSON
+# Returns: formatted text via stdout, 0=success, 1=failure
+cli_formatter_format_text() {
+    # Interface - no implementation
+    :
+}
+
+# Format output as JSON
+# Parameters: $1 - formatter identifier, $2 - data JSON
+# Returns: formatted JSON via stdout, 0=success, 1=failure
+cli_formatter_format_json() {
+    # Interface - no implementation
+    :
+}
+
+# Format output as table
+# Parameters: $1 - formatter identifier, $2 - data JSON
+# Returns: formatted table via stdout, 0=success, 1=failure
+cli_formatter_format_table() {
+    # Interface - no implementation
+    :
+}

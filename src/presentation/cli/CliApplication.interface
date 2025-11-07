@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+# CliApplication.interface - ONLY CLI application contract
+# Description: CLI application interface for application lifecycle
+# SINGLE RESPONSIBILITY: Define CLI application interface
+
+# Initialize CLI application
+# Parameters: $1 - application configuration
+# Returns: 0=success, 1=failure
+cli_app_init() {
+    # Interface - no implementation
+    :
+}
+
+# Run CLI application
+# Parameters: $1 - command line arguments
+# Returns: 0=success, 1=failure
+cli_app_run() {
+    # Interface - no implementation
+    :
+}
+
+# Register CLI command
+# Parameters: $1 - command name, $2 - handler function, $3 - help text
+# Returns: 0=success, 1=failure
+cli_app_register_command() {
+    # Interface - no implementation
+    :
+}
+
+# Shutdown CLI application
+# Returns: 0=success, 1=failure
+cli_app_shutdown() {
+    # Interface - no implementation
+    :
+}

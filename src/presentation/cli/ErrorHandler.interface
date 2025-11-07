@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# ErrorHandler.interface - ONLY CLI error handler contract
+# Description: CLI error handler interface for error management
+# SINGLE RESPONSIBILITY: Define CLI error handler interface
+
+# Create error handler
+# Parameters: $1 - error handler configuration
+# Returns: handler identifier via stdout, 0=success, 1=failure
+cli_error_handler_create() {
+    # Interface - no implementation
+    :
+}
+
+# Handle error
+# Parameters: $1 - handler identifier, $2 - error code, $3 - error message
+# Returns: 0=success, 1=failure
+cli_error_handler_handle() {
+    # Interface - no implementation
+    :
+}
+
+# Format error output
+# Parameters: $1 - handler identifier, $2 - error code, $3 - error message
+# Returns: formatted error via stdout, 0=success, 1=failure
+cli_error_handler_format() {
+    # Interface - no implementation
+    :
+}

@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# UserDomainException.interface - ONLY user domain exception contract
+# Description: User domain exception interface
+# SINGLE RESPONSIBILITY: Define user domain exception interface
+
+# Create user domain exception
+# Parameters: $1 - error code, $2 - error message
+# Returns: exception JSON via stdout, 0=success, 1=failure
+exception_user_domain_create() {
+    # Interface - no implementation
+    :
+}
+
+# Get error code from exception
+# Parameters: $1 - exception JSON
+# Returns: error code via stdout, 0=success, 1=failure
+exception_user_domain_get_code() {
+    # Interface - no implementation
+    :
+}
+
+# Get error message from exception
+# Parameters: $1 - exception JSON
+# Returns: error message via stdout, 0=success, 1=failure
+exception_user_domain_get_message() {
+    # Interface - no implementation
+    :
+}

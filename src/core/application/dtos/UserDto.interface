@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+# UserDto.interface - ONLY user data transfer object contract
+# Description: DTO for user data transfer
+# SINGLE RESPONSIBILITY: Define user DTO interface
+
+# Create user DTO
+# Parameters: $1 - user ID, $2 - username, $3 - email
+# Returns: DTO JSON via stdout, 0=success, 1=failure
+dto_user_create() {
+    # Interface - no implementation
+    :
+}
+
+# Validate user DTO
+# Parameters: $1 - DTO JSON
+# Returns: 0=valid, 1=invalid
+dto_user_validate() {
+    # Interface - no implementation
+    :
+}
+
+# Get user ID from DTO
+# Parameters: $1 - DTO JSON
+# Returns: user ID via stdout, 0=success, 1=failure
+dto_user_get_id() {
+    # Interface - no implementation
+    :
+}
+
+# Get username from DTO
+# Parameters: $1 - DTO JSON
+# Returns: username via stdout, 0=success, 1=failure
+dto_user_get_username() {
+    # Interface - no implementation
+    :
+}
+
+# Get email from DTO
+# Parameters: $1 - DTO JSON
+# Returns: email via stdout, 0=success, 1=failure
+dto_user_get_email() {
+    # Interface - no implementation
+    :
+}

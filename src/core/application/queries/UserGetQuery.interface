@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# UserGetQuery.interface - ONLY user get query contract
+# Description: Query to retrieve a user
+# SINGLE RESPONSIBILITY: Define user get query interface
+
+# Create user get query
+# Parameters: $1 - user ID
+# Returns: query JSON via stdout, 0=success, 1=failure
+query_user_get_create() {
+    # Interface - no implementation
+    :
+}
+
+# Validate user get query
+# Parameters: $1 - query JSON
+# Returns: 0=valid, 1=invalid
+query_user_get_validate() {
+    # Interface - no implementation
+    :
+}
+
+# Get user ID from query
+# Parameters: $1 - query JSON
+# Returns: user ID via stdout, 0=success, 1=failure
+query_user_get_get_user_id() {
+    # Interface - no implementation
+    :
+}

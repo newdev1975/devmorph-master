@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+# CommandHandler.interface - ONLY CLI command handler contract
+# Description: CLI command handler interface for command line operations
+# SINGLE RESPONSIBILITY: Define CLI command handler interface
+
+# Create command handler
+# Parameters: $1 - command name, $2 - handler function
+# Returns: handler identifier via stdout, 0=success, 1=failure
+cli_handler_create() {
+    # Interface - no implementation
+    :
+}
+
+# Register command handler
+# Parameters: $1 - handler identifier
+# Returns: 0=success, 1=failure
+cli_handler_register() {
+    # Interface - no implementation
+    :
+}
+
+# Execute command handler
+# Parameters: $1 - handler identifier, $2 - arguments JSON
+# Returns: execution result via stdout, 0=success, 1=failure
+cli_handler_execute() {
+    # Interface - no implementation
+    :
+}
+
+# Get command help text
+# Parameters: $1 - handler identifier
+# Returns: help text via stdout, 0=success, 1=failure
+cli_handler_get_help() {
+    # Interface - no implementation
+    :
+}

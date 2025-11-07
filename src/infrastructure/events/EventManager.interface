@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+# EventManager.interface - ONLY event manager contract
+# Description: Event manager interface for application-wide events
+# SINGLE RESPONSIBILITY: Define event manager interface
+
+# Initialize event manager
+# Returns: 0=success, 1=failure
+event_manager_init() {
+    # Interface - no implementation
+    :
+}
+
+# Register event handler
+# Parameters: $1 - event type, $2 - handler function
+# Returns: 0=success, 1=failure
+event_manager_register_handler() {
+    # Interface - no implementation
+    :
+}
+
+# Emit event
+# Parameters: $1 - event type, $2 - event data
+# Returns: 0=success, 1=failure
+event_manager_emit() {
+    # Interface - no implementation
+    :
+}
+
+# Remove event handler
+# Parameters: $1 - event type, $2 - handler function
+# Returns: 0=success, 1=handler not found, 2=failure
+event_manager_remove_handler() {
+    # Interface - no implementation
+    :
+}

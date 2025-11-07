@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# UserCreatedEvent.interface - ONLY user created application event contract
+# Description: Application event for user creation
+# SINGLE RESPONSIBILITY: Define user created application event interface
+
+# Create user created event
+# Parameters: $1 - user DTO JSON
+# Returns: event JSON via stdout, 0=success, 1=failure
+event_user_created_create() {
+    # Interface - no implementation
+    :
+}
+
+# Get user from event
+# Parameters: $1 - event JSON
+# Returns: user DTO JSON via stdout, 0=success, 1=failure
+event_user_created_get_user() {
+    # Interface - no implementation
+    :
+}

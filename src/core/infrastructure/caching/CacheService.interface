@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+# CacheService.interface - ONLY cache service contract
+# Description: Cache service interface for data caching
+# SINGLE RESPONSIBILITY: Define cache service interface
+
+# Create cache service
+# Parameters: $1 - cache configuration
+# Returns: cache identifier via stdout, 0=success, 1=failure
+cache_service_create() {
+    # Interface - no implementation
+    :
+}
+
+# Get value from cache
+# Parameters: $1 - cache identifier, $2 - key
+# Returns: cached value via stdout, 0=success, 1=not found, 2=failure
+cache_service_get() {
+    # Interface - no implementation
+    :
+}
+
+# Set value in cache
+# Parameters: $1 - cache identifier, $2 - key, $3 - value, $4 - TTL (optional)
+# Returns: 0=success, 1=failure
+cache_service_set() {
+    # Interface - no implementation
+    :
+}
+
+# Delete value from cache
+# Parameters: $1 - cache identifier, $2 - key
+# Returns: 0=success, 1=failure
+cache_service_delete() {
+    # Interface - no implementation
+    :
+}

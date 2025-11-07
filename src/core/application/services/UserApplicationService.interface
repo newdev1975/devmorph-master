@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# UserApplicationService.interface - ONLY user application service contract
+# Description: Application service for user operations
+# SINGLE RESPONSIBILITY: Define user application service interface
+
+# Execute user creation command
+# Parameters: $1 - command JSON
+# Returns: user DTO JSON via stdout, 0=success, 1=failure
+service_user_execute_create_command() {
+    # Interface - no implementation
+    :
+}
+
+# Execute user update command
+# Parameters: $1 - command JSON
+# Returns: 0=success, 1=failure
+service_user_execute_update_command() {
+    # Interface - no implementation
+    :
+}
+
+# Execute user get query
+# Parameters: $1 - query JSON
+# Returns: user DTO JSON via stdout, 0=success, 1=user not found, 2=failure
+service_user_execute_get_query() {
+    # Interface - no implementation
+    :
+}

@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# UserRepository.interface - ONLY user repository contract
+# Description: User repository interface for data access
+# SINGLE RESPONSIBILITY: Define user repository interface
+
+# Find user by ID
+# Parameters: $1 - user ID
+# Returns: user entity JSON via stdout, 0=success, 1=not found, 2=failure
+repository_user_find_by_id() {
+    # Interface - no implementation
+    :
+}
+
+# Save user
+# Parameters: $1 - user entity JSON
+# Returns: 0=success, 1=failure
+repository_user_save() {
+    # Interface - no implementation
+    :
+}
+
+# Find user by email
+# Parameters: $1 - email string
+# Returns: user entity JSON via stdout, 0=success, 1=not found, 2=failure
+repository_user_find_by_email() {
+    # Interface - no implementation
+    :
+}

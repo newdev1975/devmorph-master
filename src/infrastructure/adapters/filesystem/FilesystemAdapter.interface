@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+# FilesystemAdapter.interface - ONLY filesystem adapter contract
+# Description: Filesystem adapter interface for file operations
+# SINGLE RESPONSIBILITY: Define filesystem adapter interface
+
+# Create filesystem adapter instance
+# Parameters: $1 - filesystem type, $2 - root path
+# Returns: adapter identifier via stdout, 0=success, 1=failure
+adapter_filesystem_create() {
+    # Interface - no implementation
+    :
+}
+
+# Read file
+# Parameters: $1 - adapter identifier, $2 - file path
+# Returns: file content via stdout, 0=success, 1=file not found, 2=failure
+adapter_filesystem_read() {
+    # Interface - no implementation
+    :
+}
+
+# Write file
+# Parameters: $1 - adapter identifier, $2 - file path, $3 - content
+# Returns: 0=success, 1=failure
+adapter_filesystem_write() {
+    # Interface - no implementation
+    :
+}
+
+# Check file exists
+# Parameters: $1 - adapter identifier, $2 - file path
+# Returns: 0=exists, 1=not exists, 2=failure
+adapter_filesystem_exists() {
+    # Interface - no implementation
+    :
+}
+
+# List directory contents
+# Parameters: $1 - adapter identifier, $2 - directory path
+# Returns: list of files/directories via stdout, 0=success, 1=directory not found, 2=failure
+adapter_filesystem_list() {
+    # Interface - no implementation
+    :
+}

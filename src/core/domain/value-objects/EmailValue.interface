@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# EmailValue.interface - ONLY email value object contract
+# Description: Email value object for user identity
+# SINGLE RESPONSIBILITY: Define email value object interface
+
+# Create email value object
+# Parameters: $1 - email string
+# Returns: email value object JSON via stdout, 0=success, 1=failure
+entity_email_create() {
+    # Interface - no implementation
+    :
+}
+
+# Validate email value object
+# Parameters: $1 - email value object JSON
+# Returns: 0=valid, 1=invalid
+entity_email_validate() {
+    # Interface - no implementation
+    :
+}
+
+# Get email string from value object
+# Parameters: $1 - email value object JSON
+# Returns: email string via stdout, 0=success, 1=failure
+entity_email_get_value() {
+    # Interface - no implementation
+    :
+}
