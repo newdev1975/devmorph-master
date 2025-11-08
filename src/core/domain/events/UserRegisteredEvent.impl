@@ -1,0 +1,57 @@
+#!/bin/sh
+# UserRegisteredEvent.impl - User registration domain event
+# Single Responsibility: User registration event creation
+# POSIX Compliance: Uses BaseEvent for storage
+
+# Source base event
+. "$(dirname "$0")/BaseEvent.impl"
+
+# Create UserRegisteredEvent
+# Args: user_id, username, email
+# Prints: event_id
+# Returns: 0 on success, 1 on failure
+user_registered_event_create() {
+    _user_id="${1:-}"
+    _username="${2:-}"
+    _email="${3:-}"
+    
+    # Validation
+    [ -z "$_user_id" ] && return 1
+    [ -z "$_username" ] && return 1
+    [ -z "$_email" ] && return 1
+    
+    # Build event data (JSON-like, POSIX-friendly)
+    _event_data="username=$_username,email=$_email"
+    
+    # Create base event
+    base_event_create \
+        "UserRegistered" \
+        "$_user_id" \
+        "User" \
+        "$_event_data" \
+        "{}"
+}
+
+# Extract username from event
+# Args: event_id
+# Prints: username
+user_registered_event_get_username() {
+    _event_id="${1:-}"
+    
+    _data=$(base_event_get_data "$_event_id") || return 1
+    
+    # Extract username (format: username=value,email=value)
+    printf "%s" "$_data" | sed 's/.*username=\([^,]*\).*/\1/'
+}
+
+# Extract email from event
+# Args: event_id
+# Prints: email
+user_registered_event_get_email() {
+    _event_id="${1:-}"
+    
+    _data=$(base_event_get_data "$_event_id") || return 1
+    
+    # Extract email
+    printf "%s" "$_data" | sed 's/.*email=\([^,]*\).*/\1/'
+}
