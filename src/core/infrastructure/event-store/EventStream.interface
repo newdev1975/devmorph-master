@@ -1,0 +1,34 @@
+#!/bin/sh
+# EventStream.interface - Event replay and state reconstruction
+# Single Responsibility: Rebuild aggregate state from events
+# POSIX Compliance: Pure interface
+
+# Replay events for aggregate
+# Args: aggregate_id, event_handler_function
+# Returns: 0 on success, 1 on failure
+# Usage: event_stream_replay "user_123" "user_aggregate_apply_event"
+event_stream_replay() {
+    _aggregate_id="${1:-}"
+    _event_handler="${2:-}"
+    printf "event_stream_replay: interface only\n" >&2
+    return 1
+}
+
+# Get aggregate version (event count)
+# Args: aggregate_id
+# Prints: version (number of events)
+event_stream_get_version() {
+    _aggregate_id="${1:-}"
+    printf "0"
+}
+
+# Get aggregate state at specific version
+# Args: aggregate_id, version, event_handler_function
+# Returns: 0 on success
+event_stream_replay_to_version() {
+    _aggregate_id="${1:-}"
+    _version="${2:-}"
+    _event_handler="${3:-}"
+    printf "event_stream_replay_to_version: interface only\n" >&2
+    return 1
+}
