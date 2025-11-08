@@ -1,0 +1,391 @@
+#!/bin/sh
+# User.impl - Full user entity implementation
+# Single Responsibility: Handle user entity creation and validation
+# POSIX Compliance: Pure sh, uses shell operations
+
+# Source dependencies
+# When this file is sourced, we assume it's from the project root
+. "src/core/domain/value-objects/EmailValue.impl"
+. "src/infrastructure/shell/operations/StringOperations.interface"
+
+# Create user entity
+# Parameters: $1 - user ID, $2 - username, $3 - email
+# Returns: user entity JSON via stdout, 0=success, 1=failure
+entity_user_create() {
+    _user_id="${1:-}"
+    _username="${2:-}"
+    _email="${3:-}"
+
+    # Validate all parameters using shell operations
+    if string_is_empty "$_user_id" || string_is_empty "$_username" || string_is_empty "$_email"; then
+        return 1
+    fi
+
+    # Validate user ID format (alphanumeric with underscores/hyphens)
+    if ! entity_user_validate_id "$_user_id"; then
+        return 1
+    fi
+
+    # Validate username format
+    if ! entity_user_validate_username "$_username"; then
+        return 1
+    fi
+
+    # Validate email using EmailValue implementation
+    if ! entity_email_validate "$_email"; then
+        return 1
+    fi
+
+    # Create user entity JSON
+    _timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    _user_entity="{\"id\":\"$_user_id\",\"username\":\"$_username\",\"email\":\"$_email\",\"created_at\":\"$_timestamp\",\"updated_at\":\"$_timestamp\"}"
+
+    printf "%s" "$_user_entity"
+    return 0
+}
+
+# Get user ID from entity
+# Parameters: $1 - user entity JSON
+# Returns: user ID via stdout, 0=success, 1=failure
+entity_user_get_id() {
+    _user_json="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+
+    # Extract user ID from JSON using simple string operations
+    # Find the id field in JSON
+    _id_start=$(printf "%s" "$_user_json" | grep -o '"id":"[^"]*"')
+    if [ -z "$_id_start" ]; then
+        return 1
+    fi
+
+    # Extract the ID value from "id":"user_id"
+    _user_id=$(printf "%s" "$_id_start" | sed 's/"id":"//' | sed 's/"$//')
+
+    if string_is_empty "$_user_id"; then
+        return 1
+    fi
+
+    printf "%s" "$_user_id"
+    return 0
+}
+
+# Validate user entity
+# Parameters: $1 - user entity JSON
+# Returns: 0=valid, 1=invalid
+entity_user_validate() {
+    _user_json="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+
+    # Extract required fields from JSON
+    _user_id=$(entity_user_get_id "$_user_json")
+    if [ $? -ne 0 ] || string_is_empty "$_user_id"; then
+        return 1
+    fi
+
+    _username=$(entity_user_get_username "$_user_json")
+    if [ $? -ne 0 ] || string_is_empty "$_username"; then
+        return 1
+    fi
+
+    _email=$(entity_user_get_email "$_user_json")
+    if [ $? -ne 0 ] || string_is_empty "$_email"; then
+        return 1
+    fi
+
+    # Validate extracted components
+    if ! entity_user_validate_id "$_user_id"; then
+        return 1
+    fi
+
+    if ! entity_user_validate_username "$_username"; then
+        return 1
+    fi
+
+    if ! entity_email_validate "$_email"; then
+        return 1
+    fi
+
+    # If we got here, the user is valid
+    return 0
+}
+
+# Get username from user entity
+# Parameters: $1 - user entity JSON
+# Returns: username via stdout, 0=success, 1=failure
+entity_user_get_username() {
+    _user_json="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+
+    # Extract username from JSON
+    _username_start=$(printf "%s" "$_user_json" | grep -o '"username":"[^"]*"')
+    if [ -z "$_username_start" ]; then
+        return 1
+    fi
+
+    # Extract the username value
+    _username=$(printf "%s" "$_username_start" | sed 's/"username":"//' | sed 's/"$//')
+
+    if string_is_empty "$_username"; then
+        return 1
+    fi
+
+    printf "%s" "$_username"
+    return 0
+}
+
+# Get email from user entity
+# Parameters: $1 - user entity JSON
+# Returns: email via stdout, 0=success, 1=failure
+entity_user_get_email() {
+    _user_json="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+
+    # Extract email from JSON
+    _email_start=$(printf "%s" "$_user_json" | grep -o '"email":"[^"]*"')
+    if [ -z "$_email_start" ]; then
+        return 1
+    fi
+
+    # Extract the email value
+    _email=$(printf "%s" "$_email_start" | sed 's/"email":"//' | sed 's/"$//')
+
+    if string_is_empty "$_email"; then
+        return 1
+    fi
+
+    printf "%s" "$_email"
+    return 0
+}
+
+# Get creation timestamp from user entity
+# Parameters: $1 - user entity JSON
+# Returns: timestamp via stdout, 0=success, 1=failure
+entity_user_get_created_at() {
+    _user_json="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+
+    # Extract created_at from JSON
+    _created_at_start=$(printf "%s" "$_user_json" | grep -o '"created_at":"[^"]*"')
+    if [ -z "$_created_at_start" ]; then
+        return 1
+    fi
+
+    # Extract the timestamp value
+    _created_at=$(printf "%s" "$_created_at_start" | sed 's/"created_at":"//' | sed 's/"$//')
+
+    if string_is_empty "$_created_at"; then
+        return 1
+    fi
+
+    printf "%s" "$_created_at"
+    return 0
+}
+
+# Get update timestamp from user entity
+# Parameters: $1 - user entity JSON
+# Returns: timestamp via stdout, 0=success, 1=failure
+entity_user_get_updated_at() {
+    _user_json="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+
+    # Extract updated_at from JSON
+    _updated_at_start=$(printf "%s" "$_user_json" | grep -o '"updated_at":"[^"]*"')
+    if [ -z "$_updated_at_start" ]; then
+        return 1
+    fi
+
+    # Extract the timestamp value
+    _updated_at=$(printf "%s" "$_updated_at_start" | sed 's/"updated_at":"//' | sed 's/"$//')
+
+    if string_is_empty "$_updated_at"; then
+        return 1
+    fi
+
+    printf "%s" "$_updated_at"
+    return 0
+}
+
+# Validate user ID format
+# Parameters: $1 - user ID
+# Returns: 0=valid, 1=invalid
+entity_user_validate_id() {
+    _user_id="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_user_id"; then
+        return 1
+    fi
+
+    # Check length (1-64 characters)
+    _length=$(string_length "$_user_id")
+    if [ "$_length" -lt 1 ] || [ "$_length" -gt 64 ]; then
+        return 1
+    fi
+
+    # Check allowed characters (alphanumeric, underscore, hyphen)
+    # Remove all allowed characters, if result is empty then all chars were valid
+    _valid_chars=$(printf "%s" "$_user_id" | sed 's/[a-zA-Z0-9_-]//g')
+    if [ -n "$_valid_chars" ]; then
+        # There are invalid characters
+        return 1
+    fi
+
+    # Should not start with special characters
+    _first_char=$(printf "%s" "$_user_id" | cut -c1)
+    case "$_first_char" in
+        -|_)
+            # Could start with these, but let's require alphanumeric start
+            _second_char=$(printf "%s" "$_user_id" | cut -c2)
+            case "$_second_char" in
+                [a-zA-Z0-9]) ;;
+                *) return 1 ;;
+            esac
+            ;;
+        [a-zA-Z0-9]) ;;
+        *) return 1 ;;
+    esac
+
+    return 0
+}
+
+# Validate username format
+# Parameters: $1 - username
+# Returns: 0=valid, 1=invalid
+entity_user_validate_username() {
+    _username="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_username"; then
+        return 1
+    fi
+
+    # Check length (1-30 characters)
+    _length=$(string_length "$_username")
+    if [ "$_length" -lt 1 ] || [ "$_length" -gt 30 ]; then
+        return 1
+    fi
+
+    # Check allowed characters (alphanumeric, underscore, hyphen)
+    _valid_chars=$(printf "%s" "$_username" | sed 's/[a-zA-Z0-9_-]//g')
+    if [ -n "$_valid_chars" ]; then
+        # There are invalid characters
+        return 1
+    fi
+
+    # Should start with alphanumeric
+    _first_char=$(printf "%s" "$_username" | cut -c1)
+    case "$_first_char" in
+        [a-zA-Z0-9]) ;;
+        *) return 1 ;;
+    esac
+
+    return 0
+}
+
+# Update user email in entity
+# Parameters: $1 - user entity JSON, $2 - new email
+# Returns: updated user entity JSON via stdout, 0=success, 1=failure
+entity_user_update_email() {
+    _user_json="${1:-}"
+    _new_email="${2:-}"
+
+    # Validate parameters
+    if string_is_empty "$_user_json" || string_is_empty "$_new_email"; then
+        return 1
+    fi
+
+    # Validate new email
+    if ! entity_email_validate "$_new_email"; then
+        return 1
+    fi
+
+    # Get current fields
+    _user_id=$(entity_user_get_id "$_user_json")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    _username=$(entity_user_get_username "$_user_json")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    # Get current creation time and set new update time
+    _created_at=$(entity_user_get_created_at "$_user_json")
+    if [ $? -ne 0 ]; then
+        _created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    fi
+    _updated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    # Create updated user entity JSON
+    _updated_user="{\"id\":\"$_user_id\",\"username\":\"$_username\",\"email\":\"$_new_email\",\"created_at\":\"$_created_at\",\"updated_at\":\"$_updated_at\"}"
+
+    printf "%s" "$_updated_user"
+    return 0
+}
+
+# Update user username in entity
+# Parameters: $1 - user entity JSON, $2 - new username
+# Returns: updated user entity JSON via stdout, 0=success, 1=failure
+entity_user_update_username() {
+    _user_json="${1:-}"
+    _new_username="${2:-}"
+
+    # Validate parameters
+    if string_is_empty "$_user_json" || string_is_empty "$_new_username"; then
+        return 1
+    fi
+
+    # Validate new username
+    if ! entity_user_validate_username "$_new_username"; then
+        return 1
+    fi
+
+    # Get current fields
+    _user_id=$(entity_user_get_id "$_user_json")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    _email=$(entity_user_get_email "$_user_json")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    # Get current creation time and set new update time
+    _created_at=$(entity_user_get_created_at "$_user_json")
+    if [ $? -ne 0 ]; then
+        _created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    fi
+    _updated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    # Create updated user entity JSON
+    _updated_user="{\"id\":\"$_user_id\",\"username\":\"$_new_username\",\"email\":\"$_email\",\"created_at\":\"$_created_at\",\"updated_at\":\"$_updated_at\"}"
+
+    printf "%s" "$_updated_user"
+    return 0
+}
