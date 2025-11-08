@@ -1,0 +1,72 @@
+#!/bin/sh
+# EventStore.interface - Event persistence and retrieval contract
+# Single Responsibility: Event storage operations
+# POSIX Compliance: Pure interface definition
+
+# Append event to store (immutable)
+# Args: event_id
+# Returns: 0 on success, 1 on failure
+event_store_append() {
+    _event_id="${1:-}"
+    printf "event_store_append: interface only\n" >&2
+    return 1
+}
+
+# Load event stream for aggregate
+# Args: aggregate_id
+# Prints: event_ids (one per line, chronological order)
+# Returns: 0 on success, 1 on failure
+event_store_load_stream() {
+    _aggregate_id="${1:-}"
+    printf "event_store_load_stream: interface only\n" >&2
+    return 1
+}
+
+# Get event by ID
+# Args: event_id
+# Prints: event_id (if exists)
+# Returns: 0 if exists, 1 otherwise
+event_store_get_event() {
+    _event_id="${1:-}"
+    printf "event_store_get_event: interface only\n" >&2
+    return 1
+}
+
+# Get all events for aggregate type
+# Args: aggregate_type (e.g., "User")
+# Prints: event_ids (one per line)
+event_store_get_by_aggregate_type() {
+    _aggregate_type="${1:-}"
+    printf "event_store_get_by_aggregate_type: interface only\n" >&2
+    return 1
+}
+
+# Get events since timestamp
+# Args: timestamp (Unix timestamp)
+# Prints: event_ids (one per line)
+event_store_get_since() {
+    _timestamp="${1:-}"
+    printf "event_store_get_since: interface only\n" >&2
+    return 1
+}
+
+# Get event count for aggregate
+# Args: aggregate_id
+# Prints: count
+event_store_count() {
+    _aggregate_id="${1:-}"
+    printf "0"
+}
+
+# Get all events (for debugging/migration)
+# Prints: event_ids (one per line)
+event_store_get_all() {
+    printf "event_store_get_all: interface only\n" >&2
+    return 1
+}
+
+# EventStore Principles:
+# - APPEND ONLY: Never update or delete events
+# - IMMUTABLE: Events are facts, cannot be changed
+# - ORDERED: Events retrieved in chronological order
+# - COMPLETE: Full audit trail of all changes
