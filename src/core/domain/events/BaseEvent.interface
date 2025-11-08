@@ -1,0 +1,77 @@
+#!/bin/sh
+# BaseEvent.interface - Base contract for all domain events
+# Single Responsibility: Define event structure and metadata
+# POSIX Compliance: Pure interface definition
+
+# Create base event structure
+# Args: event_type, aggregate_id, aggregate_type, event_data (JSON), metadata (optional)
+# Prints: event_id
+# Returns: 0 on success, 1 on failure
+base_event_create() {
+    _event_type="${1:-}"
+    _aggregate_id="${2:-}"
+    _aggregate_type="${3:-}"
+    _event_data="${4:-}"
+    _metadata="${5:-}"
+    
+    # Validation handled by implementation
+    printf "base_event_create: interface only\n" >&2
+    return 1
+}
+
+# Get event ID
+# Args: event_id
+# Prints: event ID
+base_event_get_id() {
+    _event_id="${1:-}"
+    printf "base_event_get_id: interface only\n" >&2
+    return 1
+}
+
+# Get event type
+# Args: event_id
+# Prints: event type (e.g., UserRegistered, UserEmailChanged)
+base_event_get_type() {
+    _event_id="${1:-}"
+    printf "base_event_get_type: interface only\n" >&2
+    return 1
+}
+
+# Get aggregate ID
+# Args: event_id
+# Prints: aggregate ID
+base_event_get_aggregate_id() {
+    _event_id="${1:-}"
+    printf "base_event_get_aggregate_id: interface only\n" >&2
+    return 1
+}
+
+# Get event data (JSON)
+# Args: event_id
+# Prints: event data as JSON
+base_event_get_data() {
+    _event_id="${1:-}"
+    printf "base_event_get_data: interface only\n" >&2
+    return 1
+}
+
+# Get event timestamp
+# Args: event_id
+# Prints: Unix timestamp
+base_event_get_timestamp() {
+    _event_id="${1:-}"
+    printf "base_event_get_timestamp: interface only\n" >&2
+    return 1
+}
+
+# Event Structure (for reference):
+# {
+#   "event_id": "evt_123456789",
+#   "event_type": "UserRegistered",
+#   "aggregate_id": "user_123",
+#   "aggregate_type": "User",
+#   "event_data": { "username": "john", "email": "john@example.com" },
+#   "timestamp": 1699000000,
+#   "version": 1,
+#   "metadata": { "correlation_id": "abc", "causation_id": "xyz" }
+# }
