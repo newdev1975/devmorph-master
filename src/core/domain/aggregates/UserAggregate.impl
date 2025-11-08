@@ -1,0 +1,158 @@
+#!/bin/sh
+# UserAggregate.impl - User aggregate root with event sourcing
+# Single Responsibility: User aggregate logic with event sourcing
+# POSIX Compliance: Uses event stream for state reconstruction
+
+# Source dependencies
+. "$(dirname "$0")/../../infrastructure/event-store/EventStream.impl"
+. "$(dirname "$0")/../events/UserRegisteredEvent.impl"
+. "$(dirname "$0")/../models/User.impl"
+
+# Aggregate state (stored in temp file per aggregate instance)
+USER_AGGREGATE_STATE_DIR="${USER_AGGREGATE_STATE_DIR:-${TMPDIR:-/tmp}/devmorph_aggregate_state}"
+
+# Initialize aggregate state directory
+_user_aggregate_init() {
+    safe_mkdir "$USER_AGGREGATE_STATE_DIR" || return 1
+}
+
+# Create new user aggregate (generates UserRegistered event)
+# Args: user_id, username, email
+# Prints: aggregate_id
+# Returns: 0 on success, 1 on failure
+user_aggregate_create() {
+    _user_id="${1:-}"
+    _username="${2:-}"
+    _email="${3:-}"
+    
+    # Validation
+    [ -z "$_user_id" ] && return 1
+    [ -z "$_username" ] && return 1
+    [ -z "$_email" ] && return 1
+    
+    # Validate email format
+    email_value_create "$_email" >/dev/null || {
+        printf "ERROR: Invalid email format\n" >&2
+        return 1
+    }
+    
+    # Create UserRegistered event
+    _event_id=$(user_registered_event_create "$_user_id" "$_username" "$_email") || return 1
+    
+    # Append to event store
+    event_store_append "$_event_id" || return 1
+    
+    # Initialize aggregate state
+    _user_aggregate_init || return 1
+    
+    # Apply event to set initial state
+    user_aggregate_apply_event "$_event_id" || return 1
+    
+    printf "%s" "$_user_id"
+    return 0
+}
+
+# Load aggregate from event store (replay all events)
+# Args: user_id
+# Returns: 0 on success, 1 on failure
+user_aggregate_load() {
+    _user_id="${1:-}"
+    
+    [ -z "$_user_id" ] && return 1
+    
+    # Initialize state
+    _user_aggregate_init || return 1
+    
+    # Replay all events to rebuild state
+    event_stream_replay "$_user_id" "user_aggregate_apply_event" || return 1
+    
+    return 0
+}
+
+# Apply event to aggregate (event handler)
+# Args: event_id
+# Returns: 0 on success, 1 on failure
+user_aggregate_apply_event() {
+    _event_id="${1:-}"
+    
+    [ -z "$_event_id" ] && return 1
+    
+    # Get event type
+    _event_type=$(base_event_get_type "$_event_id") || return 1
+    
+    # Apply based on event type
+    case "$_event_type" in
+        UserRegistered)
+            _user_aggregate_apply_registered "$_event_id"
+            ;;
+        UserEmailChanged)
+            _user_aggregate_apply_email_changed "$_event_id"
+            ;;
+        UserDeleted)
+            _user_aggregate_apply_deleted "$_event_id"
+            ;;
+        *)
+            printf "WARNING: Unknown event type: %s\n" "$_event_type" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Apply UserRegistered event
+_user_aggregate_apply_registered() {
+    _event_id="${1:-}"
+    
+    # Extract data from event
+    _user_id=$(base_event_get_aggregate_id "$_event_id")
+    _username=$(user_registered_event_get_username "$_event_id")
+    _email=$(user_registered_event_get_email "$_event_id")
+    
+    # Store aggregate state
+    _state_file="$USER_AGGREGATE_STATE_DIR/$_user_id"
+    {
+        printf "user_id=%s\n" "$_user_id"
+        printf "username=%s\n" "$_username"
+        printf "email=%s\n" "$_email"
+        printf "status=active\n"
+    } > "$_state_file"
+    
+    return 0
+}
+
+# Apply UserEmailChanged event (future implementation)
+_user_aggregate_apply_email_changed() {
+    _event_id="${1:-}"
+    # TODO: Implement email change logic
+    return 0
+}
+
+# Apply UserDeleted event (future implementation)
+_user_aggregate_apply_deleted() {
+    _event_id="${1:-}"
+    # TODO: Implement deletion logic
+    return 0
+}
+
+# Get aggregate state
+# Args: user_id
+# Prints: state (key=value format)
+user_aggregate_get_state() {
+    _user_id="${1:-}"
+    
+    [ -z "$_user_id" ] && return 1
+    
+    _state_file="$USER_AGGREGATE_STATE_DIR/$_user_id"
+    
+    [ ! -f "$_state_file" ] && return 1
+    
+    cat "$_state_file"
+}
+
+# Get aggregate version
+# Args: user_id
+# Prints: version (event count)
+user_aggregate_get_version() {
+    _user_id="${1:-}"
+    
+    event_stream_get_version "$_user_id"
+}
