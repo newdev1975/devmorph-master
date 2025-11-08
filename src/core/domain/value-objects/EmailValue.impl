@@ -1,0 +1,206 @@
+#!/bin/sh
+# EmailValue.impl - Full email value object implementation
+# Single Responsibility: Handle email validation and representation
+# POSIX Compliance: Pure sh, uses shell operations
+
+# Source shell operations for string operations
+# When this file is sourced, we assume it's from the project root
+. "src/infrastructure/shell/operations/StringOperations.interface"
+
+# Create email value object
+# Parameters: $1 - email string
+# Returns: email value object JSON via stdout, 0=success, 1=failure
+entity_email_create() {
+    _email="${1:-}"
+
+    # Validate parameter using shell operations
+    if string_is_empty "$_email"; then
+        return 1
+    fi
+
+    # Validate email format
+    if ! entity_email_validate "$_email"; then
+        return 1
+    fi
+
+    # Create email value object JSON
+    _email_json="{\"value\":\"$_email\",\"created_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+
+    printf "%s" "$_email_json"
+    return 0
+}
+
+# Validate email value object
+# Parameters: $1 - email string or email value object JSON
+# Returns: 0=valid, 1=invalid
+entity_email_validate() {
+    _input="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_input"; then
+        return 1
+    fi
+
+    # Check if input is JSON (contains "value")
+    if string_contains "$_input" "value"; then
+        # Extract email from JSON
+        _email=$(entity_email_get_value "$_input" 2>/dev/null)
+        if [ $? -ne 0 ] || string_is_empty "$_email"; then
+            return 1
+        fi
+    else
+        # Input is directly the email string
+        _email="$_input"
+    fi
+
+    # Trim whitespace from email
+    _email=$(string_trim "$_email")
+    if string_is_empty "$_email"; then
+        return 1
+    fi
+
+    # Basic format validation using POSIX-compliant pattern matching
+    # Check if it contains @ and has text before and after
+    case "$_email" in
+        *@*)
+            # At least has @ with something before it
+            _local_part=$(printf "%s" "$_email" | cut -d '@' -f1)
+            _domain_part=$(printf "%s" "$_email" | cut -d '@' -f2-)
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    # Validate local part (before @)
+    if string_is_empty "$_local_part" || [ "${#_local_part}" -gt 64 ]; then
+        return 1
+    fi
+
+    # Validate domain part (after @)
+    if string_is_empty "$_domain_part" || [ "${#_domain_part}" -gt 255 ]; then
+        return 1
+    fi
+
+    # Check that domain has at least one dot
+    if ! string_contains "$_domain_part" "."; then
+        return 1
+    fi
+
+    # Validate characters in local part (POSIX-compliant character validation)
+    _valid_local_chars=$(printf "%s" "$_local_part" | sed 's/[-a-zA-Z0-9.!#$%&'"'"'*+/=?^_`{|}~]//g')
+    if [ -n "$_valid_local_chars" ]; then
+        # There are invalid characters in local part
+        return 1
+    fi
+
+    # Validate characters in domain part
+    _valid_domain_chars=$(printf "%s" "$_domain_part" | sed 's/[-a-zA-Z0-9.]//g')
+    if [ -n "$_valid_domain_chars" ]; then
+        # There are invalid characters in domain part
+        return 1
+    fi
+
+    # Domain should not start or end with dots or hyphens
+    if string_starts_with "$_domain_part" "." || string_ends_with "$_domain_part" "."; then
+        return 1
+    fi
+    if string_starts_with "$_domain_part" "-" || string_ends_with "$_domain_part" "-"; then
+        return 1
+    fi
+
+    # If we got here, the email is valid
+    return 0
+}
+
+# Get email string from value object
+# Parameters: $1 - email value object JSON
+# Returns: email string via stdout, 0=success, 1=failure
+entity_email_get_value() {
+    _email_json="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_email_json"; then
+        return 1
+    fi
+
+    # Extract email value from JSON using simple string operations
+    # This is a simple JSON parser using POSIX tools
+    # Find the value field in JSON
+    _value_start=$(printf "%s" "$_email_json" | grep -o '"value":"[^"]*"')
+    if [ -z "$_value_start" ]; then
+        return 1
+    fi
+
+    # Extract the email value from "value":"email@domain.com"
+    _email=$(printf "%s" "$_value_start" | sed 's/"value":"//' | sed 's/"$//')
+
+    if string_is_empty "$_email"; then
+        return 1
+    fi
+
+    printf "%s" "$_email"
+    return 0
+}
+
+# Validate an email address string using POSIX-compliant approach
+# Parameters: $1 - email string to validate
+# Returns: 0=valid, 1=invalid
+email_value_validate_string() {
+    _email="${1:-}"
+    entity_email_validate "$_email"
+}
+
+# Get email domain part
+# Parameters: $1 - email string
+# Returns: domain part via stdout, 0=success, 1=failure
+email_value_get_domain() {
+    _email="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_email"; then
+        return 1
+    fi
+
+    # Check if email is valid first
+    if ! entity_email_validate "$_email"; then
+        return 1
+    fi
+
+    # Extract domain part (after @)
+    _domain_part=$(printf "%s" "$_email" | cut -d '@' -f2-)
+
+    if string_is_empty "$_domain_part"; then
+        return 1
+    fi
+
+    printf "%s" "$_domain_part"
+    return 0
+}
+
+# Get email local part (before @)
+# Parameters: $1 - email string
+# Returns: local part via stdout, 0=success, 1=failure
+email_value_get_local_part() {
+    _email="${1:-}"
+
+    # Validate parameter
+    if string_is_empty "$_email"; then
+        return 1
+    fi
+
+    # Check if email is valid first
+    if ! entity_email_validate "$_email"; then
+        return 1
+    fi
+
+    # Extract local part (before @)
+    _local_part=$(printf "%s" "$_email" | cut -d '@' -f1)
+
+    if string_is_empty "$_local_part"; then
+        return 1
+    fi
+
+    printf "%s" "$_local_part"
+    return 0
+}

@@ -1,0 +1,118 @@
+#!/bin/sh
+# UserRepositoryImpl.impl - User repository implementation using InMemoryRepository
+# Single Responsibility: Provide user-specific repository operations
+# POSIX Compliance: Pure sh, uses InMemoryRepository implementation
+
+# Source the InMemoryRepository implementation and user entity
+# When this file is sourced, we assume it's from the project root
+. "src/core/infrastructure/persistence/InMemoryRepository.impl"
+. "src/core/domain/models/User.impl"
+
+# Initialize user repository implementation
+# Parameters: $1 - database connection identifier (not used for in-memory)
+# Returns: 0=success, 1=failure
+init_UserRepositoryImpl() {
+    _db_connection="${1:-}"
+    
+    # Initialize the underlying InMemoryRepository for User entities
+    init_InMemoryRepositoryImpl "$_db_connection"
+}
+
+# Find user by ID implementation
+# Parameters: $1 - user ID
+# Returns: user entity JSON via stdout, 0=success, 1=not found, 2=failure
+repository_user_find_by_id_impl() {
+    _user_id="${1:-}"
+    
+    if string_is_empty "$_user_id"; then
+        return 2
+    fi
+    
+    # Use the underlying repository to find by ID
+    repository_find_by_id "User" "$_user_id"
+}
+
+# Save user implementation
+# Parameters: $1 - user entity JSON
+# Returns: 0=success, 1=failure
+repository_user_save_impl() {
+    _user_json="${1:-}"
+    
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+    
+    # Validate user entity before saving
+    if ! entity_user_validate "$_user_json"; then
+        return 1
+    fi
+    
+    # Use the underlying repository to save
+    repository_save "User" "$_user_json"
+}
+
+# Find user by email implementation
+# Parameters: $1 - email string
+# Returns: user entity JSON via stdout, 0=success, 1=not found, 2=failure
+repository_user_find_by_email_impl() {
+    _email="${1:-}"
+    
+    if string_is_empty "$_email"; then
+        return 2
+    fi
+    
+    # Validate email format before searching
+    if ! entity_email_validate "$_email"; then
+        return 2
+    fi
+    
+    # Use the underlying repository to find by email
+    repository_find_by_email "$_email"
+}
+
+# Update user implementation
+# Parameters: $1 - user entity JSON
+# Returns: 0=success, 1=failure
+repository_user_update_impl() {
+    _user_json="${1:-}"
+    
+    if string_is_empty "$_user_json"; then
+        return 1
+    fi
+    
+    # Validate user entity before updating
+    if ! entity_user_validate "$_user_json"; then
+        return 1
+    fi
+    
+    # Use the underlying repository to update
+    repository_update "User" "$_user_json"
+}
+
+# Delete user by ID implementation
+# Parameters: $1 - user ID
+# Returns: 0=success, 1=failure
+repository_user_delete_impl() {
+    _user_id="${1:-}"
+    
+    if string_is_empty "$_user_id"; then
+        return 1
+    fi
+    
+    # Use the underlying repository to delete
+    repository_delete "User" "$_user_id"
+}
+
+# Find all users implementation
+# Returns: list of user entities via stdout, 0=success, 1=failure
+repository_user_find_all_impl() {
+    # Use the underlying repository to find all
+    repository_find_all "User"
+}
+
+# Count users implementation
+# Returns: count via stdout, 0=success, 1=failure
+repository_user_count_impl() {
+    # Use the underlying repository to count
+    repository_count "User"
+}

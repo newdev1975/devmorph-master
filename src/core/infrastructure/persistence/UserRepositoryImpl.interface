@@ -34,3 +34,33 @@ repository_user_find_by_email_impl() {
     # Interface - no implementation
     :
 }
+
+# Update user implementation
+# Parameters: $1 - user entity JSON
+# Returns: 0=success, 1=failure
+repository_user_update_impl() {
+    # Interface - no implementation
+    :
+}
+
+# Delete user by ID implementation
+# Parameters: $1 - user ID
+# Returns: 0=success, 1=failure
+repository_user_delete_impl() {
+    # Interface - no implementation
+    :
+}
+
+# Find all users implementation
+# Returns: list of user entities via stdout, 0=success, 1=failure
+repository_user_find_all_impl() {
+    # Interface - no implementation
+    :
+}
+
+# Count users implementation
+# Returns: count via stdout, 0=success, 1=failure
+repository_user_count_impl() {
+    # Interface - no implementation
+    :
+}

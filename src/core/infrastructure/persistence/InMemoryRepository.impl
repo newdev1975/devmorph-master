@@ -1,0 +1,383 @@
+#!/bin/sh
+# InMemoryRepository.impl - Full in-memory repository implementation
+# Single Responsibility: Provide in-memory data persistence operations
+# POSIX Compliance: Pure sh, uses shell operations and temporary files
+
+# Source shell operations and dependencies
+# When this file is sourced, we assume it's from the project root
+. "src/infrastructure/shell/operations/StringOperations.interface"
+. "src/infrastructure/shell/operations/FileOperations.interface"
+. "src/core/domain/models/User.impl"
+
+# Repository storage configuration
+REPO_DATA_DIR="/tmp/devmorph_repo_$$"
+REPO_INDEX_DIR="$REPO_DATA_DIR/indexes"
+
+# Initialize repository storage
+repository_init_storage() {
+    safe_mkdir "$REPO_DATA_DIR" || return 1
+    safe_mkdir "$REPO_INDEX_DIR" || return 1
+    
+    # Initialize index tracking files
+    touch "$REPO_DATA_DIR/entity_types" "$REPO_DATA_DIR/sequence" "$REPO_DATA_DIR/email_index"
+    chmod 600 "$REPO_DATA_DIR/entity_types" "$REPO_DATA_DIR/sequence" "$REPO_DATA_DIR/email_index"
+}
+
+# Get next sequence number for entity ID generation
+repository_get_next_sequence() {
+    _sequence_file="$REPO_DATA_DIR/sequence"
+    
+    # Read current sequence, default to 0 if empty
+    _current_seq=$(cat "$_sequence_file" 2>/dev/null)
+    if [ -z "$_current_seq" ] || ! printf "%s" "$_current_seq" | grep -qE '^[0-9]+$'; then
+        _current_seq=0
+    fi
+    
+    # Increment sequence
+    _next_seq=$(expr "$_current_seq" + 1)
+    
+    # Save new sequence
+    printf "%s" "$_next_seq" > "$_sequence_file"
+    
+    printf "%s" "$_next_seq"
+}
+
+# Get entity data file path
+# Parameters: $1 - entity type, $2 - entity ID
+repository_get_entity_path() {
+    _entity_type="${1:-}"
+    _entity_id="${2:-}"
+    
+    if string_is_empty "$_entity_type" || string_is_empty "$_entity_id"; then
+        return 1
+    fi
+    
+    printf "%s/%s/%s.json" "$REPO_DATA_DIR" "$_entity_type" "$_entity_id"
+}
+
+# Get entity directory path
+# Parameters: $1 - entity type
+repository_get_entity_dir() {
+    _entity_type="${1:-}"
+    
+    if string_is_empty "$_entity_type"; then
+        return 1
+    fi
+    
+    printf "%s/%s" "$REPO_DATA_DIR" "$_entity_type"
+}
+
+# Initialize in-memory repository implementation
+# Parameters: $1 - database connection identifier (not used for in-memory)
+# Returns: 0=success, 1=failure
+init_InMemoryRepositoryImpl() {
+    # This parameter is kept for interface compatibility but not used
+    _db_connection="${1:-}"
+    
+    # Initialize repository storage
+    if ! repository_init_storage; then
+        return 1
+    fi
+    
+    # Register entity type if not already registered
+    _entity_type="User"
+    if ! grep -Fxq "$_entity_type" "$REPO_DATA_DIR/entity_types" 2>/dev/null; then
+        printf "%s\n" "$_entity_type" >> "$REPO_DATA_DIR/entity_types"
+    fi
+    
+    return 0
+}
+
+# Save entity to repository
+# Parameters: $1 - entity type, $2 - entity JSON
+# Returns: 0=success, 1=failure
+repository_save() {
+    _entity_type="${1:-}"
+    _entity_json="${2:-}"
+    
+    # Validate parameters
+    if string_is_empty "$_entity_type" || string_is_empty "$_entity_json"; then
+        return 1
+    fi
+    
+    # Validate entity type is registered
+    if ! grep -Fxq "$_entity_type" "$REPO_DATA_DIR/entity_types" 2>/dev/null; then
+        return 1
+    fi
+    
+    # Extract entity ID from JSON
+    _entity_id=""
+    case "$_entity_type" in
+        "User")
+            _entity_id=$(entity_user_get_id "$_entity_json")
+            ;;
+        *)
+            # For other entity types, we'd need a generic way to extract ID
+            # For now, return an error for unhandled types
+            return 1
+            ;;
+    esac
+    
+    if [ $? -ne 0 ] || string_is_empty "$_entity_id"; then
+        return 1
+    fi
+    
+    # Create entity type directory if it doesn't exist
+    _entity_dir=$(repository_get_entity_dir "$_entity_type")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    if ! safe_mkdir "$_entity_dir"; then
+        return 1
+    fi
+    
+    # Get entity file path
+    _entity_path=$(repository_get_entity_path "$_entity_type" "$_entity_id")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    # Save entity to file
+    printf "%s" "$_entity_json" > "$_entity_path"
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    # Update indexes based on entity type
+    case "$_entity_type" in
+        "User")
+            # Create/update email index
+            _email=$(entity_user_get_email "$_entity_json")
+            if [ $? -eq 0 ] && ! string_is_empty "$_email"; then
+                # Format: email|entity_type|entity_id
+                printf "%s|%s|%s\n" "$_email" "$_entity_type" "$_entity_id" > "$REPO_INDEX_DIR/email_$$_$$_entity_id"
+            fi
+            ;;
+    esac
+    
+    return 0
+}
+
+# Find entity by ID
+# Parameters: $1 - entity type, $2 - entity ID
+# Returns: entity JSON via stdout, 0=success, 1=not found, 2=failure
+repository_find_by_id() {
+    _entity_type="${1:-}"
+    _entity_id="${2:-}"
+    
+    # Validate parameters
+    if string_is_empty "$_entity_type" || string_is_empty "$_entity_id"; then
+        return 2
+    fi
+    
+    # Validate entity type is registered
+    if ! grep -Fxq "$_entity_type" "$REPO_DATA_DIR/entity_types" 2>/dev/null; then
+        return 2
+    fi
+    
+    # Get entity file path
+    _entity_path=$(repository_get_entity_path "$_entity_type" "$_entity_id")
+    if [ $? -ne 0 ]; then
+        return 2
+    fi
+    
+    # Check if entity file exists
+    if [ ! -f "$_entity_path" ]; then
+        return 1
+    fi
+    
+    # Read and return entity
+    cat "$_entity_path"
+    return 0
+}
+
+# Find entity by email (specific to User)
+# Parameters: $1 - email string
+# Returns: user entity JSON via stdout, 0=success, 1=not found, 2=failure
+repository_find_by_email() {
+    _email="${1:-}"
+    
+    # Validate parameter
+    if string_is_empty "$_email"; then
+        return 2
+    fi
+    
+    # Search in email index
+    _index_file=$(find "$REPO_INDEX_DIR" -name "email_*" -type f 2>/dev/null | while read -r file; do
+        if grep -q "^$_email|" "$file" 2>/dev/null; then
+            printf "%s\n" "$file"
+            break
+        fi
+    done)
+    
+    if string_is_empty "$_index_file" || [ ! -f "$_index_file" ]; then
+        return 1
+    fi
+    
+    # Extract entity type and ID from index
+    _line=$(grep "^$_email|" "$_index_file" 2>/dev/null | head -n1)
+    if [ -z "$_line" ]; then
+        return 1
+    fi
+    
+    _entity_type=$(printf "%s" "$_line" | cut -d'|' -f2)
+    _entity_id=$(printf "%s" "$_line" | cut -d'|' -f3)
+    
+    if string_is_empty "$_entity_type" || string_is_empty "$_entity_id"; then
+        return 2
+    fi
+    
+    # Get the actual entity from storage
+    repository_find_by_id "$_entity_type" "$_entity_id"
+}
+
+# Find all entities of a type
+# Parameters: $1 - entity type
+# Returns: list of entity JSONs (one per line) via stdout, 0=success, 1=failure
+repository_find_all() {
+    _entity_type="${1:-}"
+    
+    # Validate parameter
+    if string_is_empty "$_entity_type"; then
+        return 1
+    fi
+    
+    # Validate entity type is registered
+    if ! grep -Fxq "$_entity_type" "$REPO_DATA_DIR/entity_types" 2>/dev/null; then
+        return 1
+    fi
+    
+    # Get entity type directory
+    _entity_dir=$(repository_get_entity_dir "$_entity_type")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    # List all entity files in the directory
+    if [ ! -d "$_entity_dir" ]; then
+        # Directory doesn't exist yet, return empty
+        return 0
+    fi
+    
+    # Find and output all JSON entity files
+    find "$_entity_dir" -name "*.json" -type f 2>/dev/null | while read -r entity_file; do
+        cat "$entity_file"
+    done
+    
+    return 0
+}
+
+# Check if entity exists
+# Parameters: $1 - entity type, $2 - entity ID
+# Returns: 0=exists, 1=not found, 2=failure
+repository_exists() {
+    _entity_type="${1:-}"
+    _entity_id="${2:-}"
+    
+    # Validate parameters
+    if string_is_empty "$_entity_type" || string_is_empty "$_entity_id"; then
+        return 2
+    fi
+    
+    # Validate entity type is registered
+    if ! grep -Fxq "$_entity_type" "$REPO_DATA_DIR/entity_types" 2>/dev/null; then
+        return 2
+    fi
+    
+    # Get entity file path and check existence
+    _entity_path=$(repository_get_entity_path "$_entity_type" "$_entity_id")
+    if [ $? -ne 0 ]; then
+        return 2
+    fi
+    
+    [ -f "$_entity_path" ] && return 0 || return 1
+}
+
+# Delete entity by ID
+# Parameters: $1 - entity type, $2 - entity ID
+# Returns: 0=success, 1=failure
+repository_delete() {
+    _entity_type="${1:-}"
+    _entity_id="${2:-}"
+    
+    # Validate parameters
+    if string_is_empty "$_entity_type" || string_is_empty "$_entity_id"; then
+        return 1
+    fi
+    
+    # Validate entity type is registered
+    if ! grep -Fxq "$_entity_type" "$REPO_DATA_DIR/entity_types" 2>/dev/null; then
+        return 1
+    fi
+    
+    # Get entity file path
+    _entity_path=$(repository_get_entity_path "$_entity_type" "$_entity_id")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    # Check if entity exists
+    if [ ! -f "$_entity_path" ]; then
+        return 0  # Deletion of non-existent entity is successful
+    fi
+    
+    # Remove the entity file
+    rm -f "$_entity_path" 2>/dev/null
+    
+    # Remove any indexes for this entity
+    find "$REPO_INDEX_DIR" -name "*_$$_$$_entity_id" -type f 2>/dev/null | xargs rm -f 2>/dev/null
+    
+    return 0
+}
+
+# Count entities of a type
+# Parameters: $1 - entity type
+# Returns: count via stdout, 0=success, 1=failure
+repository_count() {
+    _entity_type="${1:-}"
+    
+    # Validate parameter
+    if string_is_empty "$_entity_type"; then
+        return 1
+    fi
+    
+    # Validate entity type is registered
+    if ! grep -Fxq "$_entity_type" "$REPO_DATA_DIR/entity_types" 2>/dev/null; then
+        return 1
+    fi
+    
+    # Get entity type directory
+    _entity_dir=$(repository_get_entity_dir "$_entity_type")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    # Count JSON files in entity directory
+    if [ ! -d "$_entity_dir" ]; then
+        printf "0"
+        return 0
+    fi
+    
+    _count=$(find "$_entity_dir" -name "*.json" -type f 2>/dev/null | wc -l)
+    printf "%s" "$_count"
+    
+    return 0
+}
+
+# Update entity in repository
+# Parameters: $1 - entity type, $2 - entity JSON
+# Returns: 0=success, 1=failure
+repository_update() {
+    _entity_type="${1:-}"
+    _entity_json="${2:-}"
+    
+    # For in-memory repository, update is the same as save
+    repository_save "$_entity_type" "$_entity_json"
+}
+
+# Initialize repository storage on script load
+repository_init_storage
+
+# Cleanup on exit
+trap 'rm -rf "$REPO_DATA_DIR"' EXIT INT TERM
