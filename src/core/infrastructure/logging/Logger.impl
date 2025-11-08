@@ -1,0 +1,243 @@
+#!/bin/sh
+# Logger.impl - Full logging implementation using shell abstraction
+# Single Responsibility: Provide complete logging functionality
+# POSIX Compliance: Pure sh, uses shell operations
+
+# Source shell operations for string and file operations
+# When this file is sourced, we assume it's from the project root
+. "src/infrastructure/shell/operations/StringOperations.interface"
+. "src/infrastructure/shell/operations/FileOperations.interface"
+
+# Logger constants
+LOGGER_LEVEL_DEBUG=0
+LOGGER_LEVEL_INFO=1
+LOGGER_LEVEL_WARNING=2
+LOGGER_LEVEL_ERROR=3
+
+# Logger storage
+LOGGER_INSTANCES_FILE="/tmp/devmorph_loggers_$$"
+LOGGER_CONFIG_FILE="/tmp/devmorph_logger_config_$$"
+
+# Initialize logger instance storage
+logger_init_storage() {
+    touch "$LOGGER_INSTANCES_FILE" "$LOGGER_CONFIG_FILE"
+    chmod 600 "$LOGGER_INSTANCES_FILE" "$LOGGER_CONFIG_FILE"
+}
+
+# Get unique logger ID
+logger_get_new_id() {
+    printf "logger_%s_%s" "$$" "$(date +%s%N | cut -c1-10)"
+}
+
+# Create logger instance
+# Parameters: $1 - log level, $2 - output destination (file path or "stdout"/"stderr")
+# Returns: logger identifier via stdout, 0=success, 1=failure
+logger_create() {
+    _level="${1:-}"
+    _destination="${2:-}"
+
+    # Validate parameters using shell operations
+    if string_is_empty "$_level" || string_is_empty "$_destination"; then
+        return 1
+    fi
+    
+    # Validate log level
+    case "$_level" in
+        debug|info|warning|error)
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+    
+    # Validate destination and create if needed
+    if [ "$_destination" != "stdout" ] && [ "$_destination" != "stderr" ]; then
+        # It's a file path - create directory if needed
+        _dir_path=$(dirname "$_destination")
+        if ! safe_mkdir "$_dir_path"; then
+            return 1
+        fi
+        
+        # Create log file if it doesn't exist
+        if [ ! -f "$_destination" ]; then
+            touch "$_destination" 2>/dev/null
+            if [ $? -ne 0 ]; then
+                return 1
+            fi
+        fi
+    fi
+
+    # Create logger instance
+    _logger_id=$(logger_get_new_id)
+    
+    # Store logger configuration
+    printf "%s|%s|%s\n" "$_logger_id" "$_level" "$_destination" >> "$LOGGER_CONFIG_FILE"
+    
+    # Initialize logger instance
+    printf "%s\n" "$_logger_id"
+    
+    return 0
+}
+
+# Get logger configuration
+# Parameters: $1 - logger identifier
+# Returns: level and destination via stdout (format: "level|destination"), 0=success, 1=failure
+logger_get_config() {
+    _logger_id="${1:-}"
+    
+    if string_is_empty "$_logger_id"; then
+        return 1
+    fi
+    
+    _config=$(grep "^$_logger_id|" "$LOGGER_CONFIG_FILE" 2>/dev/null | head -n1)
+    if [ -z "$_config" ]; then
+        return 1
+    fi
+    
+    _level=$(printf "%s" "$_config" | cut -d'|' -f2)
+    _destination=$(printf "%s" "$_config" | cut -d'|' -f3)
+    
+    printf "%s|%s" "$_level" "$_destination"
+    return 0
+}
+
+# Get timestamp for log entry
+# Returns: timestamp string via stdout
+logger_get_timestamp() {
+    date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || printf "UNKNOWN_TIMESTAMP"
+}
+
+# Write log entry to destination
+# Parameters: $1 - destination, $2 - formatted log entry
+logger_write_entry() {
+    _destination="${1:-}"
+    _entry="${2:-}"
+    
+    if [ "$_destination" = "stdout" ]; then
+        printf "%s\n" "$_entry"
+    elif [ "$_destination" = "stderr" ]; then
+        printf "%s\n" "$_entry" >&2
+    else
+        # It's a file - append to log file
+        printf "%s\n" "$_entry" >> "$_destination" 2>/dev/null
+        if [ $? -ne 0 ]; then
+            # If writing to file fails, fallback to stderr
+            printf "%s\n" "$_entry" >&2
+        fi
+    fi
+}
+
+# Check if log level should be output
+# Parameters: $1 - logger level, $2 - message level
+# Returns: 0 if should log, 1 if should skip
+logger_should_log() {
+    _logger_level="${1:-info}"
+    _message_level="${2:-info}"
+    
+    # Convert levels to numeric values for comparison
+    case "$_logger_level" in
+        debug) _logger_num=0 ;;
+        info) _logger_num=1 ;;
+        warning) _logger_num=2 ;;
+        error) _logger_num=3 ;;
+        *) return 1 ;;
+    esac
+    
+    case "$_message_level" in
+        debug) _message_num=0 ;;
+        info) _message_num=1 ;;
+        warning) _message_num=2 ;;
+        error) _message_num=3 ;;
+        *) return 1 ;;
+    esac
+    
+    # Log if message level is >= logger level (more severe)
+    if [ "$_message_num" -ge "$_logger_num" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Log message with specified level
+# Parameters: $1 - logger identifier, $2 - level, $3 - message
+# Returns: 0=success, 1=failure
+logger_log_message() {
+    _logger_id="${1:-}"
+    _level="${2:-info}"
+    _message="${3:-}"
+    
+    # Validate parameters
+    if string_is_empty "$_logger_id" || string_is_empty "$_level" || string_is_empty "$_message"; then
+        return 1
+    fi
+    
+    # Get logger configuration
+    _config=$(logger_get_config "$_logger_id")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    _logger_level=$(printf "%s" "$_config" | cut -d'|' -f1)
+    _destination=$(printf "%s" "$_config" | cut -d'|' -f2)
+    
+    # Check if message should be logged based on level
+    if ! logger_should_log "$_logger_level" "$_level"; then
+        return 0
+    fi
+    
+    # Format log entry
+    _timestamp=$(logger_get_timestamp)
+    _log_entry="[$_timestamp] [$_level] $_logger_id: $_message"
+    
+    # Write to destination
+    logger_write_entry "$_destination" "$_log_entry"
+    
+    return 0
+}
+
+# Log debug message
+# Parameters: $1 - logger identifier, $2 - message
+# Returns: 0=success, 1=failure
+logger_debug() {
+    _logger_id="${1:-}"
+    _message="${2:-}"
+    
+    logger_log_message "$_logger_id" "debug" "$_message"
+}
+
+# Log info message
+# Parameters: $1 - logger identifier, $2 - message
+# Returns: 0=success, 1=failure
+logger_info() {
+    _logger_id="${1:-}"
+    _message="${2:-}"
+    
+    logger_log_message "$_logger_id" "info" "$_message"
+}
+
+# Log warning message
+# Parameters: $1 - logger identifier, $2 - message
+# Returns: 0=success, 1=failure
+logger_warning() {
+    _logger_id="${1:-}"
+    _message="${2:-}"
+    
+    logger_log_message "$_logger_id" "warning" "$_message"
+}
+
+# Log error message
+# Parameters: $1 - logger identifier, $2 - message
+# Returns: 0=success, 1=failure
+logger_error() {
+    _logger_id="${1:-}"
+    _message="${2:-}"
+    
+    logger_log_message "$_logger_id" "error" "$_message"
+}
+
+# Initialize logger storage
+logger_init_storage
+
+# Cleanup on exit
+trap 'rm -f "$LOGGER_INSTANCES_FILE" "$LOGGER_CONFIG_FILE"' EXIT INT TERM
