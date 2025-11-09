@@ -1,0 +1,112 @@
+#!/bin/sh
+# BaseEvent.impl - Base event implementation
+
+# FIX: Path detection
+if [ -n "${BASH_SOURCE:-}" ]; then
+    _event_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _event_dir="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+else
+    _event_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || _event_dir="."
+fi
+
+# Find Shell Abstraction
+_project_root="$(cd "${_event_dir}/../../.." && pwd)"
+
+. "${_project_root}/src/infrastructure/shell/operations/FileOperations.interface"
+. "${_project_root}/src/infrastructure/shell/operations/StringOperations.interface"
+
+EVENT_STORAGE_DIR="${EVENT_STORAGE_DIR:-${TMPDIR:-/tmp}/devmorph_events}"
+
+_base_event_init() {
+    safe_mkdir "$EVENT_STORAGE_DIR" || return 1
+    return 0
+}
+
+base_event_create() {
+    _event_type="${1:-}"
+    _aggregate_id="${2:-}"
+    _aggregate_type="${3:-}"
+    _event_data="${4:-}"
+    _metadata="${5:-{}}"
+    
+    [ -z "$_event_type" ] && return 1
+    [ -z "$_aggregate_id" ] && return 1
+    [ -z "$_aggregate_type" ] && return 1
+    [ -z "$_event_data" ] && return 1
+    
+    _base_event_init || return 1
+    
+    _event_id="evt_$(date +%s%N 2>/dev/null || printf "%s" "$$")_$$_$RANDOM"
+    
+    _timestamp=$(date +%s)
+    
+    _event_file="${EVENT_STORAGE_DIR}/${_event_id}"
+    
+    {
+        printf "event_id=%s\n" "$_event_id"
+        printf "event_type=%s\n" "$_event_type"
+        printf "aggregate_id=%s\n" "$_aggregate_id"
+        printf "aggregate_type=%s\n" "$_aggregate_type"
+        printf "event_data=%s\n" "$_event_data"
+        printf "timestamp=%s\n" "$_timestamp"
+        printf "version=1\n"
+        printf "metadata=%s\n" "$_metadata"
+    } > "$_event_file" || return 1
+    
+    printf "%s" "$_event_id"
+    return 0
+}
+
+_base_event_get_field() {
+    _event_id="${1:-}"
+    _field="${2:-}"
+    
+    [ -z "$_event_id" ] || [ -z "$_field" ] && return 1
+    
+    _event_file="${EVENT_STORAGE_DIR}/${_event_id}"
+    
+    [ ! -f "$_event_file" ] && return 1
+    
+    grep "^${_field}=" "$_event_file" | cut -d'=' -f2-
+}
+
+base_event_get_id() {
+    _event_id="${1:-}"
+    printf "%s" "$_event_id"
+}
+
+base_event_get_type() {
+    _event_id="${1:-}"
+    _base_event_get_field "$_event_id" "event_type"
+}
+
+base_event_get_aggregate_id() {
+    _event_id="${1:-}"
+    _base_event_get_field "$_event_id" "aggregate_id"
+}
+
+base_event_get_aggregate_type() {
+    _event_id="${1:-}"
+    _base_event_get_field "$_event_id" "aggregate_type"
+}
+
+base_event_get_data() {
+    _event_id="${1:-}"
+    _base_event_get_field "$_event_id" "event_data"
+}
+
+base_event_get_timestamp() {
+    _event_id="${1:-}"
+    _base_event_get_field "$_event_id" "timestamp"
+}
+
+base_event_get_version() {
+    _event_id="${1:-}"
+    _base_event_get_field "$_event_id" "version"
+}
+
+base_event_get_metadata() {
+    _event_id="${1:-}"
+    _base_event_get_field "$_event_id" "metadata"
+}

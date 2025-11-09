@@ -1,25 +1,25 @@
 #!/bin/sh
 # FileEventStore.impl - File-based event store implementation
-# Single Responsibility: Event persistence using filesystem
-# POSIX Compliance: Uses shell abstraction
 
-# Source dependencies
-_event_store_dir=$(dirname "$0")
-. "${_event_store_dir}/../shell/operations/FileOperations.interface"
-. "${_event_store_dir}/../shell/operations/StringOperations.interface"
+# FIX: Path detection
+if [ -n "${BASH_SOURCE:-}" ]; then
+    _event_store_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _event_store_dir="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+else
+    _event_store_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || _event_store_dir="."
+fi
+
+# Find Shell Abstraction - it should be in src/infrastructure/shell/operations/
+# From event-store: ../../.. to src root, then infrastructure/shell/operations
+_project_root="$(cd "${_event_store_dir}/../../.." && pwd)"
+
+. "${_project_root}/src/infrastructure/shell/operations/FileOperations.interface"
+. "${_project_root}/src/infrastructure/shell/operations/StringOperations.interface"
 . "${_event_store_dir}/../../domain/events/BaseEvent.impl"
-
-# Event store directory structure:
-# $EVENT_STORE_DIR/
-#   streams/
-#     user_123/  (aggregate ID)
-#       events.log  (chronological list of event IDs)
-#   events/
-#     evt_xxx  (actual event files)
 
 EVENT_STORE_DIR="${EVENT_STORE_DIR:-${TMPDIR:-/tmp}/devmorph_event_store}"
 
-# Initialize event store
 _event_store_init() {
     safe_mkdir "$EVENT_STORE_DIR" || return 1
     safe_mkdir "$EVENT_STORE_DIR/streams" || return 1
@@ -27,29 +27,20 @@ _event_store_init() {
     return 0
 }
 
-# Append event to store
-# Args: event_id
-# Returns: 0 on success, 1 on failure
 event_store_append() {
     _event_id="${1:-}"
-    
     [ -z "$_event_id" ] && return 1
     
-    # Initialize if needed
     _event_store_init || return 1
     
-    # Get aggregate ID from event
     _aggregate_id=$(base_event_get_aggregate_id "$_event_id") || return 1
     
-    # Create stream directory for aggregate if not exists
     _stream_dir="$EVENT_STORE_DIR/streams/$_aggregate_id"
     safe_mkdir "$_stream_dir" || return 1
     
-    # Append event ID to stream log (chronological)
     _stream_log="$_stream_dir/events.log"
     printf "%s\n" "$_event_id" >> "$_stream_log" || return 1
     
-    # Copy event file to event store (for centralized storage)
     _source_event="${EVENT_STORAGE_DIR}/${_event_id}"
     _dest_event="$EVENT_STORE_DIR/events/$_event_id"
     
@@ -60,30 +51,19 @@ event_store_append() {
     return 0
 }
 
-# Load event stream for aggregate (chronological order)
-# Args: aggregate_id
-# Prints: event_ids (one per line)
 event_store_load_stream() {
     _aggregate_id="${1:-}"
-    
     [ -z "$_aggregate_id" ] && return 1
     
     _stream_log="$EVENT_STORE_DIR/streams/$_aggregate_id/events.log"
     
-    # Return empty if no events
     [ ! -f "$_stream_log" ] && return 0
     
-    # Print all event IDs (already in chronological order)
     cat "$_stream_log"
 }
 
-# Get event by ID
-# Args: event_id
-# Prints: event_id if exists
-# Returns: 0 if exists, 1 otherwise
 event_store_get_event() {
     _event_id="${1:-}"
-    
     [ -z "$_event_id" ] && return 1
     
     _event_file="$EVENT_STORE_DIR/events/$_event_id"
@@ -96,16 +76,10 @@ event_store_get_event() {
     return 1
 }
 
-# Get all events for aggregate type
-# Args: aggregate_type (e.g., "User")
-# Prints: event_ids (one per line)
 event_store_get_by_aggregate_type() {
     _aggregate_type="${1:-}"
-    
     [ -z "$_aggregate_type" ] && return 1
     
-    # Find all events with matching aggregate type
-    # POSIX: Use find and grep
     find "$EVENT_STORE_DIR/events" -type f 2>/dev/null | while IFS= read -r _event_file; do
         _event_id=$(basename "$_event_file")
         _type=$(base_event_get_aggregate_type "$_event_id" 2>/dev/null)
@@ -116,27 +90,19 @@ event_store_get_by_aggregate_type() {
     done
 }
 
-# Get events since timestamp
-# Args: timestamp (Unix timestamp)
-# Prints: event_ids (one per line)
 event_store_get_since() {
     _since_timestamp="${1:-0}"
     
-    # Find all events with timestamp >= since_timestamp
     find "$EVENT_STORE_DIR/events" -type f 2>/dev/null | while IFS= read -r _event_file; do
         _event_id=$(basename "$_event_file")
         _event_timestamp=$(base_event_get_timestamp "$_event_id" 2>/dev/null)
         
-        # POSIX arithmetic comparison
         if [ -n "$_event_timestamp" ] && [ "$_event_timestamp" -ge "$_since_timestamp" ]; then
             printf "%s\n" "$_event_id"
         fi
     done
 }
 
-# Get event count for aggregate
-# Args: aggregate_id
-# Prints: count
 event_store_count() {
     _aggregate_id="${1:-}"
     
@@ -154,19 +120,14 @@ event_store_count() {
     fi
 }
 
-# Get all events (for debugging)
-# Prints: event_ids (one per line)
 event_store_get_all() {
     find "$EVENT_STORE_DIR/events" -type f 2>/dev/null | while IFS= read -r _event_file; do
         basename "$_event_file"
     done
 }
 
-# Cleanup on exit
 trap '_event_store_cleanup' EXIT INT TERM
 
 _event_store_cleanup() {
-    # Optional: cleanup old events (configurable retention policy)
-    # For now, keep all events (true event sourcing)
     :
 }
