@@ -1,15 +1,18 @@
 #!/bin/sh
 # EventStream.impl - Event replay implementation
-# Single Responsibility: Reconstruct aggregate state from events
-# POSIX Compliance: Uses event store
 
-# Source dependencies
-. "$(dirname "$0")/FileEventStore.impl"
-. "$(dirname "$0")/../../domain/events/BaseEvent.impl"
+# FIX: Path detection
+if [ -n "${BASH_SOURCE:-}" ]; then
+    _stream_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _stream_dir="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+else
+    _stream_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || _stream_dir="."
+fi
 
-# Replay events for aggregate (applies all events in order)
-# Args: aggregate_id, event_handler_function
-# Returns: 0 on success, 1 on failure
+. "${_stream_dir}/FileEventStore.impl"
+. "${_stream_dir}/../../domain/events/BaseEvent.impl"
+
 event_stream_replay() {
     _aggregate_id="${1:-}"
     _event_handler="${2:-}"
@@ -17,14 +20,11 @@ event_stream_replay() {
     [ -z "$_aggregate_id" ] && return 1
     [ -z "$_event_handler" ] && return 1
     
-    # Load event stream (chronological)
     _events=$(event_store_load_stream "$_aggregate_id") || return 0
     
-    # Apply each event to aggregate
     printf "%s\n" "$_events" | while IFS= read -r _event_id; do
         [ -z "$_event_id" ] && continue
         
-        # Call event handler with event ID
         "$_event_handler" "$_event_id" || {
             printf "ERROR: Failed to apply event: %s\n" "$_event_id" >&2
             return 1
@@ -32,9 +32,6 @@ event_stream_replay() {
     done
 }
 
-# Get aggregate version (number of events)
-# Args: aggregate_id
-# Prints: version
 event_stream_get_version() {
     _aggregate_id="${1:-}"
     
@@ -46,9 +43,6 @@ event_stream_get_version() {
     event_store_count "$_aggregate_id"
 }
 
-# Replay to specific version (useful for temporal queries)
-# Args: aggregate_id, version, event_handler_function
-# Returns: 0 on success
 event_stream_replay_to_version() {
     _aggregate_id="${1:-}"
     _target_version="${2:-0}"
@@ -57,20 +51,16 @@ event_stream_replay_to_version() {
     [ -z "$_aggregate_id" ] && return 1
     [ -z "$_event_handler" ] && return 1
     
-    # Load event stream
     _events=$(event_store_load_stream "$_aggregate_id") || return 0
     
-    # Apply events up to target version
     _current_version=0
     printf "%s\n" "$_events" | while IFS= read -r _event_id; do
         [ -z "$_event_id" ] && continue
         
         _current_version=$(expr "$_current_version" + 1)
         
-        # Stop at target version
         [ "$_current_version" -gt "$_target_version" ] && break
         
-        # Apply event
         "$_event_handler" "$_event_id" || return 1
     done
 }
