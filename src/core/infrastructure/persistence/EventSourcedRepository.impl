@@ -1,0 +1,136 @@
+#!/bin/sh
+# EventSourcedRepository.impl - Repository using event sourcing
+# Single Responsibility: Aggregate persistence via events
+# POSIX Compliance: Uses event store and aggregates
+
+# Source dependencies
+. "$(dirname "$0")/../../domain/aggregates/UserAggregate.impl"
+. "$(dirname "$0")/../event-store/FileEventStore.impl"
+
+# Save aggregate (actually just ensures events are persisted)
+# Args: aggregate_id
+# Returns: 0 on success, 1 on failure
+# Note: In event sourcing, "save" means events are already appended
+event_sourced_repository_save() {
+    _aggregate_id="${1:-}"
+    
+    [ -z "$_aggregate_id" ] && return 1
+    
+    # In event sourcing, aggregate is already saved via events
+    # This is a no-op, but kept for repository interface compatibility
+    return 0
+}
+
+# Load aggregate by ID (replays events)
+# Args: aggregate_id
+# Returns: 0 on success, 1 on failure
+event_sourced_repository_load() {
+    _aggregate_id="${1:-}"
+    
+    [ -z "$_aggregate_id" ] && return 1
+    
+    # Check if aggregate has any events
+    _event_count=$(event_store_count "$_aggregate_id")
+    
+    if [ "$_event_count" = "0" ]; then
+        return 1  # Aggregate doesn't exist
+    fi
+    
+    # Load aggregate (replays all events)
+    user_aggregate_load "$_aggregate_id" || return 1
+    
+    return 0
+}
+
+# Find aggregate by ID and return state
+# Args: aggregate_id
+# Prints: aggregate state (key=value format)
+event_sourced_repository_find_by_id() {
+    _aggregate_id="${1:-}"
+    
+    [ -z "$_aggregate_id" ] && return 1
+    
+    # Load aggregate
+    event_sourced_repository_load "$_aggregate_id" || return 1
+    
+    # Return current state
+    user_aggregate_get_state "$_aggregate_id"
+}
+
+# Check if aggregate exists
+# Args: aggregate_id
+# Returns: 0 if exists, 1 otherwise
+event_sourced_repository_exists() {
+    _aggregate_id="${1:-}"
+    
+    [ -z "$_aggregate_id" ] && return 1
+    
+    _event_count=$(event_store_count "$_aggregate_id")
+    
+    [ "$_event_count" != "0" ]
+}
+
+# Get all aggregates of type (queries event store)
+# Prints: aggregate_ids (one per line)
+event_sourced_repository_find_all() {
+    # Get all User events
+    _event_ids=$(event_store_get_by_aggregate_type "User")
+    
+    # Extract unique aggregate IDs
+    printf "%s\n" "$_event_ids" | while IFS= read -r _event_id; do
+        [ -z "$_event_id" ] && continue
+        base_event_get_aggregate_id "$_event_id"
+    done | sort -u
+}
+
+# Count aggregates
+# Prints: count
+event_sourced_repository_count() {
+    event_sourced_repository_find_all | wc -l | tr -d ' '
+}
+
+# Get aggregate version (event count)
+# Args: aggregate_id
+# Prints: version
+event_sourced_repository_get_version() {
+    _aggregate_id="${1:-}"
+    
+    [ -z "$_aggregate_id" ] && {
+        printf "0"
+        return 0
+    }
+    
+    user_aggregate_get_version "$_aggregate_id"
+}
+
+# Get aggregate at specific version (temporal query)
+# Args: aggregate_id, version
+# Returns: 0 on success
+event_sourced_repository_load_at_version() {
+    _aggregate_id="${1:-}"
+    _version="${2:-}"
+    
+    [ -z "$_aggregate_id" ] && return 1
+    [ -z "$_version" ] && return 1
+    
+    # Initialize state
+    _user_aggregate_init || return 1
+    
+    # Replay to specific version
+    event_stream_replay_to_version "$_aggregate_id" "$_version" "user_aggregate_apply_event"
+}
+
+# Event Sourcing Repository Pattern:
+# - No traditional CRUD (Create, Update, Delete)
+# - Only: Create (generate event), Load (replay events)
+# - "Save" is append event to store
+# - "Load" is replay event stream
+# - "Update" is generate new event
+# - "Delete" is generate delete event (soft delete)
+#
+# Benefits:
+# - Complete audit trail (who, what, when)
+# - Temporal queries (state at any point in time)
+# - Event replay (reprocess with new logic)
+# - Debugging (see exact sequence of changes)
+# - Event-driven architecture (publish events)
