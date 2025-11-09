@@ -11,8 +11,33 @@ setup() {
     
     mkdir -p "$TEST_DIR"
     
-    # Source event sourcing components
-    . "${BATS_TEST_DIRNAME}/../../src/core/infrastructure/persistence/EventSourcedRepository.impl"
+    # Smart path detection (works from anywhere)
+    if [ -n "${BASH_SOURCE:-}" ]; then
+        TEST_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    elif [ -n "${ZSH_VERSION:-}" ]; then
+        TEST_SCRIPT_DIR="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+    else
+        TEST_SCRIPT_DIR="${BATS_TEST_DIRNAME}"
+    fi
+    
+    # Go up to project root (tests/integration/event-sourcing -> project root)
+    PROJECT_ROOT="$(cd "${TEST_SCRIPT_DIR}/../../.." && pwd)"
+    
+    # Try different possible paths (robust path resolution)
+    if [ -f "$PROJECT_ROOT/src/core/infrastructure/persistence/EventSourcedRepository.impl" ]; then
+        . "$PROJECT_ROOT/src/core/infrastructure/persistence/EventSourcedRepository.impl"
+    elif [ -f "$PROJECT_ROOT/src/infrastructure/persistence/EventSourcedRepository.impl" ]; then
+        . "$PROJECT_ROOT/src/infrastructure/persistence/EventSourcedRepository.impl"
+    else
+        # Fallback: search for it
+        REPO_FILE=$(find "$PROJECT_ROOT" -name "EventSourcedRepository.impl" -type f 2>/dev/null | head -n 1)
+        if [ -n "$REPO_FILE" ]; then
+            . "$REPO_FILE"
+        else
+            echo "ERROR: EventSourcedRepository.impl not found!" >&2
+            return 1
+        fi
+    fi
 }
 
 teardown() {
